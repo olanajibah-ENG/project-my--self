@@ -1,0 +1,79 @@
+import React, { useState } from 'react';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { authService } from '../../services/authService'; // استيراد الخدمة
+import './AuthForm.css';
+
+export const LoginForm: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // 1. إضافة State لتخزين البيانات والرسائل
+  const [username, setUsername] = useState(''); // الباك عندك يستخدم username بناءً على الصورة
+  const [password, setPassword] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setErrorMsg(''); // تصفير الخطأ عند كل محاولة
+
+    try {
+      // 2. استدعاء الخدمة الحقيقية
+      const data = await authService.login({ username, password });
+      
+      // 3. تخزين التوكن (ملف api.ts سيتكفل بالباقي لاحقاً)
+      console.log('Login Success:', data);
+      
+      alert("تم تسجيل الدخول بنجاح!");
+      onSuccess?.();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'فشل تسجيل الدخول');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="auth-form">
+      <div className="form-group">
+        <label className="form-label">Username</label>
+        <div className="input-container">
+          <Mail className="input-icon" size={20} />
+          <input
+            type="text"
+            className="form-input"
+            placeholder="Enter your username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+        </div>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Password</label>
+        <div className="input-container">
+          <Lock className="input-icon" size={20} />
+          <input
+            type={showPassword ? 'text' : 'password'}
+            className="form-input"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <button type="button" className="password-toggle" onClick={() => setShowPassword(!showPassword)}>
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+        </div>
+      </div>
+
+      {/* عرض رسالة الخطأ هنا */}
+      {errorMsg && <p style={{ color: 'red', fontSize: '14px' }}>{errorMsg}</p>}
+
+      <button type="submit" className="auth-submit-btn" disabled={isLoading}>
+        {isLoading ? 'Signing in...' : 'Sign In'}
+      </button>
+    </form>
+  );
+};

@@ -1,4 +1,12 @@
-import React, { useState, useEffect } from 'react';
+// =============================================================================
+// 📚 EDIT BOOK MODAL - Form for updating existing books
+// =============================================================================
+// 
+// ⚠️ ISSUE FOUND: Same as AddBookModal - cover_image was using type="url"
+// ✅ FIX: Changed to type="file" for proper file uploads
+// =============================================================================
+
+import React, { useState, useEffect, useRef } from 'react';
 import type { Book, BookFormData } from '../../types/book.types';
 import './BookModal.css';
 
@@ -17,42 +25,74 @@ export const EditBookModal: React.FC<EditBookModalProps> = ({
   onSubmit,
   isLoading
 }) => {
-  const [formData, setFormData] = useState<BookFormData>({
+  const [formData, setFormData] = useState<{
+    title: string;
+    author: string;
+    quantity: number;
+  }>({
     title: '',
     author: '',
-    cover_image: '',
     quantity: 1
   });
 
-  const [errors, setErrors] = useState<Partial<BookFormData>>({});
+  // ✅ Separate state for the file
+  const [coverImage, setCoverImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (book && isOpen) {
       setFormData({
         title: book.title,
         author: book.author,
-        cover_image: book.cover_image || '',
         quantity: book.quantity
       });
+      // Show existing image if available
+      setImagePreview(book.cover_image || null);
+      setCoverImage(null);  // Reset file selection
       setErrors({});
     }
   }, [book, isOpen]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'quantity'
-        ? value ? Number(value) : undefined
-        : value
+      [name]: name === 'quantity' ? (value ? Number(value) : 1) : value
     }));
 
-    // Clear error when user starts typing
-    if (errors[name as keyof BookFormData]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: undefined
-      }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setErrors(prev => ({ ...prev, cover_image: 'Please select an image file' }));
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        setErrors(prev => ({ ...prev, cover_image: 'Image must be less than 5MB' }));
+        return;
+      }
+
+      setCoverImage(file);
+      setImagePreview(URL.createObjectURL(file));
+      setErrors(prev => ({ ...prev, cover_image: '' }));
+    }
+  };
+
+  const clearImage = () => {
+    setCoverImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -84,7 +124,19 @@ export const EditBookModal: React.FC<EditBookModalProps> = ({
     }
 
     try {
-      await onSubmit(book.id, formData);
+      // ✅ Build update data - only include cover_image if a new file was selected
+      const bookData: Partial<BookFormData> = {
+        title: formData.title,
+        author: formData.author,
+        quantity: formData.quantity
+      };
+
+      // Only include cover_image if user selected a new file
+      if (coverImage instanceof File) {
+        bookData.cover_image = coverImage;
+      }
+
+      await onSubmit(book.id, bookData);
       onClose();
     } catch (error) {
       // Error is handled by the parent component
@@ -93,6 +145,8 @@ export const EditBookModal: React.FC<EditBookModalProps> = ({
 
   const handleClose = () => {
     setErrors({});
+    setCoverImage(null);
+    setImagePreview(null);
     onClose();
   };
 
@@ -156,16 +210,41 @@ export const EditBookModal: React.FC<EditBookModalProps> = ({
               {errors.quantity && <span className="error-message">{errors.quantity}</span>}
             </div>
 
+            {/* ✅ PROPER FILE INPUT */}
             <div className="form-group full-width">
-              <label htmlFor="cover_image">Cover Image URL</label>
+              <label htmlFor="cover_image">Cover Image</label>
+
+              {/* Image Preview */}
+              {imagePreview && (
+                <div className="image-preview" style={{ marginBottom: '10px' }}>
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    style={{ maxWidth: '100px', maxHeight: '150px', borderRadius: '4px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    style={{ marginLeft: '10px', cursor: 'pointer' }}
+                  >
+                    ❌ Remove
+                  </button>
+                </div>
+              )}
+
               <input
-                type="url"
+                type="file"
                 id="cover_image"
                 name="cover_image"
-                value={formData.cover_image}
-                onChange={handleInputChange}
-                placeholder="Enter cover image URL"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                style={{ padding: '8px' }}
               />
+              <small style={{ display: 'block', marginTop: '4px', color: '#888' }}>
+                Leave empty to keep current image
+              </small>
+              {errors.cover_image && <span className="error-message">{errors.cover_image}</span>}
             </div>
 
           </div>

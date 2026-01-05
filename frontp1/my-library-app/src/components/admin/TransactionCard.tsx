@@ -16,7 +16,12 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
   showAdminActions = false
 }) => {
   const borrowDate = new Date(transaction.borrowDate);
-  const expectedReturnDate = new Date(transaction.expectedReturnDate);
+
+  // ✅ FIX: If no expectedReturnDate from backend, calculate as borrow + 14 days
+  const expectedReturnDate = transaction.expectedReturnDate
+    ? new Date(transaction.expectedReturnDate)
+    : new Date(borrowDate.getTime() + (14 * 24 * 60 * 60 * 1000)); // 14 days default
+
   const actualReturnDate = transaction.actualReturnDate ? new Date(transaction.actualReturnDate) : null;
   const now = new Date();
 
@@ -86,6 +91,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
           <span className="date-label">Borrowed:</span>
           <span className="date-value">{borrowDate.toLocaleDateString()}</span>
         </div>
+        {/* ✅ Due date: uses expectedReturnDate if provided, else borrow + 14 days */}
         <div className="date-item">
           <span className="date-label">Due:</span>
           <span className={`date-value ${isOverdue ? 'overdue' : ''}`}>

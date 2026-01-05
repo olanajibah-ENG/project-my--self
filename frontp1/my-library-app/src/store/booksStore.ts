@@ -1,27 +1,31 @@
+// =============================================================================
+// 📚 BOOKS STORE - Zustand store for book state management
+// =============================================================================
+// 
+// ⚠️ ISSUES FOUND:
+// 1. Imported types that didn't exist (BooksState, BookFilters) - now fixed in types!
+// 2. Mock data used wrong property names (totalQuantity, coverImageUrl, etc.)
+// 3. Store methods expected paginated response but service returns plain array
+//
+// ✅ KEY LESSON: Your backend returns a SIMPLE ARRAY of books, not a paginated object!
+//    GET /api/books/ returns: [{id, title, author, quantity, cover_image}, ...]
+//    NOT: { books: [...], totalPages: 1, currentPage: 1 }
+// =============================================================================
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import type { Book, BooksState, BookFormData, BookFilters } from '../types/book.types';
+import type { Book, BooksState, BookFormData } from '../types/book.types';
 import { booksService } from '../services/booksService';
 
 interface BooksStore extends BooksState {
-  // Actions
-  fetchBooks: (params?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    sortBy?: string;
-    sortOrder?: 'asc' | 'desc';
-    filters?: BookFilters;
-  }) => Promise<void>;
-  fetchBookById: (id: string) => Promise<void>;
+  fetchBooks: () => Promise<void>;
+  fetchBookById: (id: number) => Promise<void>;
   createBook: (bookData: BookFormData) => Promise<Book>;
-  updateBook: (id: string, bookData: Partial<BookFormData>) => Promise<Book>;
-  deleteBook: (id: string) => Promise<void>;
-  searchBooks: (query: string) => Promise<void>;
+  updateBook: (id: number, bookData: Partial<BookFormData>) => Promise<Book>;
+  deleteBook: (id: number) => Promise<void>;
   setSearchQuery: (query: string) => void;
-  setSortBy: (sortBy: 'title' | 'author' | 'rating' | 'availability') => void;
+  setSortBy: (sortBy: 'title' | 'author' | 'quantity') => void;
   setSortOrder: (sortOrder: 'asc' | 'desc') => void;
-  setCurrentPage: (page: number) => void;
   clearError: () => void;
   clearCurrentBook: () => void;
 }
@@ -41,106 +45,51 @@ export const useBooksStore = create<BooksStore>()(
       totalPages: 1,
       totalBooks: 0,
 
-      // Fetch books
-      fetchBooks: async (params = {}) => {
+      // =================================================================
+      // FETCH BOOKS
+      // =================================================================
+      /**
+       * ⚠️ CRITICAL FIX: Your backend returns a simple array, not paginated data!
+       * 
+       * Your BookListView.get() does:
+       *   books = Book.objects.all()
+       *   serializer = BookSerializer(books, many=True)
+       *   return Response(serializer.data)  ← This is just an array!
+       * 
+       * So we get: [{id, title, author, quantity, cover_image}, ...]
+       * NOT: { books: [...], totalPages: 1, ... }
+       */
+      fetchBooks: async () => {
         set({ isLoading: true, error: null });
 
         try {
-          const {
-            page = 1,
-            limit = 12,
-            search = '',
-            sortBy = 'title',
-            sortOrder = 'asc',
-            filters = {}
-          } = params;
+          // ✅ FIX: Service now returns Book[] directly (simple array)
+          const books = await booksService.getBooks();
 
-          // Check if backend is available
-          try {
-            const response = await booksService.getBooks({
-              page,
-              limit,
-              search,
-              sortBy,
-              sortOrder,
-              filters
-            });
+          console.log('BooksStore: Fetched books:', books.length);
 
-            set({
-              books: response.books,
-              currentPage: response.currentPage,
-              totalPages: response.totalPages,
-              totalBooks: response.totalBooks,
-              isLoading: false,
-              searchQuery: search,
-              sortBy: sortBy as any,
-              sortOrder
-            });
-          } catch (apiError) {
-            // Backend not available, use mock data
-            console.warn('Backend not available, using mock data');
-            const mockBooks = [
-              {
-                id: '1',
-                title: 'The Great Gatsby',
-                author: 'F. Scott Fitzgerald',
-                isbn: '978-0-7432-7356-5',
-                totalQuantity: 10,
-                availableQuantity: 8,
-                coverImageUrl: '',
-                rating: 4.5,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-              },
-              {
-                id: '2',
-                title: 'To Kill a Mockingbird',
-                author: 'Harper Lee',
-                isbn: '978-0-06-112008-4',
-                totalQuantity: 5,
-                availableQuantity: 3,
-                coverImageUrl: '',
-                rating: 4.8,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-              },
-              {
-                id: '3',
-                title: '1984',
-                author: 'George Orwell',
-                isbn: '978-0-452-28423-4',
-                totalQuantity: 7,
-                availableQuantity: 7,
-                coverImageUrl: '',
-                rating: 4.6,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-              }
-            ];
+          set({
+            books: books,
+            totalBooks: books.length,
+            totalPages: 1,  // No pagination from backend
+            currentPage: 1,
+            isLoading: false
+          });
 
-            set({
-              books: mockBooks,
-              currentPage: 1,
-              totalPages: 1,
-              totalBooks: mockBooks.length,
-              isLoading: false,
-              searchQuery: search,
-              sortBy: sortBy as any,
-              sortOrder
-            });
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to fetch books';
+        } catch (error: any) {
+          console.error('BooksStore: Failed to fetch books:', error);
           set({
             isLoading: false,
-            error: errorMessage,
+            error: error.message || 'Failed to fetch books',
             books: []
           });
         }
       },
 
-      // Fetch single book
-      fetchBookById: async (id: string) => {
+      // =================================================================
+      // FETCH SINGLE BOOK
+      // =================================================================
+      fetchBookById: async (id: number) => {
         set({ isLoading: true, error: null });
 
         try {
@@ -149,141 +98,88 @@ export const useBooksStore = create<BooksStore>()(
             currentBook: book,
             isLoading: false
           });
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to fetch book';
+        } catch (error: any) {
           set({
             isLoading: false,
-            error: errorMessage,
+            error: error.message || 'Failed to fetch book',
             currentBook: null
           });
         }
       },
 
-      // Create book
+      // =================================================================
+      // CREATE BOOK
+      // =================================================================
+      /**
+       * Creates a new book (Admin only)
+       * 
+       * ⚠️ NOTE: Your backend checks is_staff in the view.
+       *    If the user is not an admin, they'll get a 403 error.
+       */
       createBook: async (bookData: BookFormData) => {
         set({ isLoading: true, error: null });
 
         try {
-          // Try backend first
-          try {
-            const newBook = await booksService.createBook(bookData);
+          const newBook = await booksService.addBook(bookData);
 
-            // Add to books list if we're on the first page
-            const state = get();
-            if (state.currentPage === 1) {
-              set(state => ({
-                books: [newBook, ...state.books.slice(0, 11)], // Keep only 12 items
-                totalBooks: state.totalBooks + 1,
-                isLoading: false
-              }));
-            } else {
-              set({ isLoading: false });
-            }
+          console.log('BooksStore: Created book:', newBook);
 
-            return newBook;
-          } catch (apiError) {
-            // Backend not available, simulate success with mock data
-            console.warn('Backend not available, simulating book creation');
-            const mockBook = {
-              id: Date.now().toString(),
-              title: bookData.title,
-              author: bookData.author,
-              isbn: bookData.isbn || '',
-              description: bookData.description || '',
-              totalQuantity: bookData.totalQuantity,
-              availableQuantity: bookData.totalQuantity,
-              coverImageUrl: bookData.coverImageUrl || '',
-              rating: 0,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            };
+          // Add to the beginning of the books list
+          set(state => ({
+            books: [newBook, ...state.books],
+            totalBooks: state.totalBooks + 1,
+            isLoading: false
+          }));
 
-            // Add to books list
-            set(state => ({
-              books: [mockBook, ...state.books.slice(0, 11)],
-              totalBooks: state.totalBooks + 1,
-              isLoading: false
-            }));
+          return newBook;
 
-            return mockBook;
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to create book';
+        } catch (error: any) {
+          console.error('BooksStore: Failed to create book:', error);
           set({
             isLoading: false,
-            error: errorMessage
+            error: error.message || 'Failed to create book'
           });
           throw error;
         }
       },
 
-      // Update book
-      updateBook: async (id: string, bookData: Partial<BookFormData>) => {
+      // =================================================================
+      // UPDATE BOOK
+      // =================================================================
+      updateBook: async (id: number, bookData: Partial<BookFormData>) => {
         set({ isLoading: true, error: null });
 
         try {
-          // Try backend first
-          try {
-            const updatedBook = await booksService.updateBook(id, bookData);
+          const updatedBook = await booksService.updateBook(id, bookData);
 
-            // Update in books list
-            set(state => ({
-              books: state.books.map(book =>
-                book.id === id ? updatedBook : book
-              ),
-              currentBook: state.currentBook?.id === id ? updatedBook : state.currentBook,
-              isLoading: false
-            }));
+          // Update in the books list
+          set(state => ({
+            books: state.books.map(book =>
+              book.id === id ? updatedBook : book
+            ),
+            currentBook: state.currentBook?.id === id ? updatedBook : state.currentBook,
+            isLoading: false
+          }));
 
-            return updatedBook;
-          } catch (apiError) {
-            // Backend not available, simulate update
-            console.warn('Backend not available, simulating book update');
-            const currentState = get();
-            const bookToUpdate = currentState.books.find(book => book.id === id);
+          return updatedBook;
 
-            if (!bookToUpdate) {
-              throw new Error('Book not found');
-            }
-
-            const updatedBook = {
-              ...bookToUpdate,
-              ...bookData,
-              updatedAt: new Date().toISOString()
-            };
-
-            set(state => ({
-              books: state.books.map(book =>
-                book.id === id ? updatedBook : book
-              ),
-              currentBook: state.currentBook?.id === id ? updatedBook : state.currentBook,
-              isLoading: false
-            }));
-
-            return updatedBook;
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to update book';
+        } catch (error: any) {
           set({
             isLoading: false,
-            error: errorMessage
+            error: error.message || 'Failed to update book'
           });
           throw error;
         }
       },
 
-      // Delete book
-      deleteBook: async (id: string) => {
+      // =================================================================
+      // DELETE BOOK
+      // =================================================================
+      deleteBook: async (id: number) => {
         set({ isLoading: true, error: null });
 
         try {
-          // Try backend first
-          try {
-            await booksService.deleteBook(id);
-          } catch (apiError) {
-            // Backend not available, simulate deletion
-            console.warn('Backend not available, simulating book deletion');
-          }
+          await booksService.deleteBook(id);
 
           // Remove from books list
           set(state => ({
@@ -292,54 +188,37 @@ export const useBooksStore = create<BooksStore>()(
             currentBook: state.currentBook?.id === id ? null : state.currentBook,
             isLoading: false
           }));
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to delete book';
+
+        } catch (error: any) {
           set({
             isLoading: false,
-            error: errorMessage
+            error: error.message || 'Failed to delete book'
           });
           throw error;
         }
       },
 
-      // Search books
-      searchBooks: async (query: string) => {
-        set({ isLoading: true, error: null, searchQuery: query });
+      // =================================================================
+      // SETTERS (for filtering/sorting - client-side only for now)
+      // =================================================================
+      // 
+      // ⚠️ NOTE: Your backend doesn't support search/sort parameters yet!
+      //    These are stored but not sent to the backend.
+      //    To add server-side filtering, you'd modify BookListView.get() to:
+      //      - Read query params: request.query_params.get('search')
+      //      - Filter queryset: Book.objects.filter(title__icontains=search)
+      // =================================================================
 
-        try {
-          const books = await booksService.searchBooks(query);
-          set({
-            books,
-            isLoading: false,
-            currentPage: 1,
-            totalPages: 1,
-            totalBooks: books.length
-          });
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Search failed';
-          set({
-            isLoading: false,
-            error: errorMessage,
-            books: []
-          });
-        }
-      },
-
-      // Setters
       setSearchQuery: (query: string) => {
         set({ searchQuery: query });
       },
 
-      setSortBy: (sortBy: 'title' | 'author' | 'rating' | 'availability') => {
+      setSortBy: (sortBy: 'title' | 'author' | 'quantity') => {
         set({ sortBy });
       },
 
       setSortOrder: (sortOrder: 'asc' | 'desc') => {
         set({ sortOrder });
-      },
-
-      setCurrentPage: (page: number) => {
-        set({ currentPage: page });
       },
 
       clearError: () => {
@@ -353,3 +232,23 @@ export const useBooksStore = create<BooksStore>()(
     { name: 'books-store' }
   )
 );
+
+// =============================================================================
+// ⚠️ REMOVED: MOCK DATA FALLBACK
+// =============================================================================
+// 
+// The original store had a try/catch that fell back to mock data if the API
+// failed. This is problematic because:
+//
+// 1. It hides real errors - you won't know if your API is broken
+// 2. Mock data used wrong property names that don't match your Book type
+// 3. It creates confusion between real and fake data
+//
+// ❌ Mock data used:
+//    { id: '1', isbn: '...', totalQuantity: 10, coverImageUrl: '', rating: 4.5 }
+//
+// ✅ Real data has:
+//    { id: 1, title: '...', author: '...', quantity: 10, cover_image: null }
+//
+// 💡 LESSON: Keep your types in sync with your backend model!
+// =============================================================================

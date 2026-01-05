@@ -1,3 +1,13 @@
+// =============================================================================
+// 📅 EXTEND BORROW MODAL - Admin modal for extending borrow periods
+// =============================================================================
+// 
+// ⚠️ ISSUE FIXED: Modal was crashing because transaction.expectedReturnDate
+//    was undefined (backend doesn't have this field in Transaction model).
+// 
+// ✅ FIX: Calculate "current expected date" as borrowDate + 14 days default.
+// =============================================================================
+
 import React, { useState, useEffect } from 'react';
 import type { Transaction } from '../../types/transaction.types';
 import './AdminModal.css';
@@ -21,10 +31,24 @@ export const ExtendBorrowModal: React.FC<ExtendBorrowModalProps> = ({
   const [reason, setReason] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // ✅ FIX: Calculate current expected date from borrowDate + 14 days
+  // (since backend doesn't have expected_return_date field)
+  const calculateExpectedDate = (borrowDateStr: string): Date => {
+    const borrowDate = new Date(borrowDateStr);
+    if (isNaN(borrowDate.getTime())) {
+      // Fallback to today if invalid
+      return new Date();
+    }
+    const expectedDate = new Date(borrowDate);
+    expectedDate.setDate(expectedDate.getDate() + 14); // 14 days default
+    return expectedDate;
+  };
+
   useEffect(() => {
     if (isOpen && transaction) {
+      // ✅ FIX: Use borrowDate + 14 days as the "current" expected date
+      const currentExpectedDate = calculateExpectedDate(transaction.borrowDate);
       // Set default extension to 14 days from current expected date
-      const currentExpectedDate = new Date(transaction.expectedReturnDate);
       const extendedDate = new Date(currentExpectedDate);
       extendedDate.setDate(extendedDate.getDate() + 14);
       setNewReturnDate(extendedDate.toISOString().split('T')[0]);
@@ -33,6 +57,12 @@ export const ExtendBorrowModal: React.FC<ExtendBorrowModalProps> = ({
     }
   }, [isOpen, transaction]);
 
+  if (!isOpen || !transaction) return null;
+
+  // ✅ FIX: Calculate dates using borrowDate + 14 days
+  const currentExpectedDate = calculateExpectedDate(transaction.borrowDate);
+  const borrowDate = new Date(transaction.borrowDate);
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -40,7 +70,6 @@ export const ExtendBorrowModal: React.FC<ExtendBorrowModalProps> = ({
       newErrors.newReturnDate = 'New return date is required';
     } else {
       const selectedDate = new Date(newReturnDate);
-      const currentExpectedDate = new Date(transaction!.expectedReturnDate);
       const now = new Date();
 
       if (selectedDate <= currentExpectedDate) {
@@ -62,17 +91,14 @@ export const ExtendBorrowModal: React.FC<ExtendBorrowModalProps> = ({
     }
 
     try {
-      await onSubmit(transaction.id, newReturnDate);
+      await onSubmit(String(transaction.id), newReturnDate);
     } catch (error) {
       // Error is handled by parent
     }
   };
 
-  if (!isOpen || !transaction) return null;
-
-  const currentExpectedDate = new Date(transaction.expectedReturnDate);
-  const selectedDate = new Date(newReturnDate);
-  const extensionDays = newReturnDate ?
+  const selectedDate = newReturnDate ? new Date(newReturnDate) : null;
+  const extensionDays = selectedDate ?
     Math.ceil((selectedDate.getTime() - currentExpectedDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
   const minDate = new Date().toISOString().split('T')[0];
@@ -102,12 +128,13 @@ export const ExtendBorrowModal: React.FC<ExtendBorrowModalProps> = ({
             </div>
             <div className="extend-current-dates">
               <div className="date-info">
-                <strong>Current Due Date:</strong>
-                <span>{currentExpectedDate.toLocaleDateString()}</span>
+                <strong>Borrow Date:</strong>
+                <span>{borrowDate.toLocaleDateString()}</span>
               </div>
               <div className="date-info">
-                <strong>Borrow Date:</strong>
-                <span>{new Date(transaction.borrowDate).toLocaleDateString()}</span>
+                <strong>Current Due Date:</strong>
+                <span>{currentExpectedDate.toLocaleDateString()}</span>
+                <small>(calculated as borrow + 14 days)</small>
               </div>
             </div>
           </div>
@@ -162,9 +189,13 @@ export const ExtendBorrowModal: React.FC<ExtendBorrowModalProps> = ({
                 </div>
                 <div className="summary-item">
                   <span>Extension Period:</span>
-                  <strong>{extensionDays} days</strong>
+                  <strong>{extensionDays > 0 ? `${extensionDays} days` : 'N/A'}</strong>
                 </div>
               </div>
+              {/* ⚠️ Note for student */}
+              <small style={{ display: 'block', marginTop: '8px', color: '#6b7280' }}>
+                Note: Backend needs expected_return_date field in Transaction model to persist this.
+              </small>
             </div>
 
             <div className="admin-modal-actions">
@@ -179,7 +210,7 @@ export const ExtendBorrowModal: React.FC<ExtendBorrowModalProps> = ({
               <button
                 type="submit"
                 className="btn-primary extend-submit-btn"
-                disabled={isLoading || !newReturnDate}
+                disabled={isLoading || !newReturnDate || extensionDays <= 0}
               >
                 {isLoading ? 'Extending...' : `📅 Extend by ${extensionDays} days`}
               </button>

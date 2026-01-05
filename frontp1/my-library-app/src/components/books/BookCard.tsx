@@ -1,3 +1,17 @@
+// =============================================================================
+// 📚 BOOK CARD - Displays a single book in a card format
+// =============================================================================
+// 
+// ✅ SIMPLIFIED: Backend now returns absolute URLs for cover_image!
+//    No need to construct URLs manually anymore.
+// 
+// ⚠️ OLD CODE (before backend fix):
+//    const API_BASE = import.meta.env.VITE_API_BASE_URL...
+//    const imageUrl = coverImage.startsWith('http') ? ... : `${API_BASE}${coverImage}`
+//
+// ✅ NEW CODE: Just use book.cover_image directly!
+// =============================================================================
+
 import React from 'react';
 import type { Book } from '../../types/book.types';
 import './BookCard.css';
@@ -23,8 +37,9 @@ export const BookCard: React.FC<BookCardProps> = ({
     <div className="book-card">
       <div className="book-card-header">
         <div className="book-cover">
-          {book.coverImageUrl ? (
-            <img src={book.coverImageUrl} alt={book.title} />
+          {/* ✅ Backend now returns absolute URL - use directly! */}
+          {book.cover_image ? (
+            <img src={book.cover_image} alt={book.title} />
           ) : (
             <div className="book-cover-placeholder">
               <span>📚</span>
@@ -36,8 +51,9 @@ export const BookCard: React.FC<BookCardProps> = ({
           <p className="book-author">by {book.author}</p>
           <div className="book-meta">
             <span className="book-id">ID: {book.id}</span>
+            {/* ✅ Use book.quantity - matches Django model */}
             <span className="book-quantity">
-              Quantity: {book.availableQuantity}/{book.totalQuantity}
+              Quantity: {book.quantity}
             </span>
           </div>
         </div>
@@ -68,7 +84,7 @@ export const BookCard: React.FC<BookCardProps> = ({
             className="book-action-btn borrow-btn"
             onClick={() => onBorrow?.(book)}
             title="Borrow Book"
-            disabled={book.availableQuantity === 0}
+            disabled={book.quantity === 0}
           >
             📚 Borrow
           </button>
@@ -77,3 +93,20 @@ export const BookCard: React.FC<BookCardProps> = ({
     </div>
   );
 };
+
+// =============================================================================
+// 💡 LEARNING: Backend Absolute URLs
+// =============================================================================
+// 
+// BEST PRACTICE: Backend serializers should return absolute URLs for media.
+// 
+// We fixed this by:
+// 1. In BookSerializer.to_representation(), use request.build_absolute_uri()
+// 2. In views, pass context={'request': request} to serializer
+// 
+// Result:
+//   Before: { "cover_image": "/media/books/image.jpg" }
+//   After:  { "cover_image": "http://localhost:8001/media/books/image.jpg" }
+// 
+// Frontend can now use the URL directly without any manipulation!
+// =============================================================================

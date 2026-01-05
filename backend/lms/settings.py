@@ -124,12 +124,8 @@ WSGI_APPLICATION = 'lms.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'library_db',       # الاسم الذي أنشأتِه بالأعلى
-        'USER': 'lms_admin',             # غالباً root إلا إذا غيرتِه
-        'PASSWORD': 'lms_admin', # اكتبي كلمة مرورك هنا
-        'HOST': '127.0.0.1',
-        'PORT': '3306',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 

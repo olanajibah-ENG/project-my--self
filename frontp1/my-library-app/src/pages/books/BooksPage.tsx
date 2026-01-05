@@ -1,17 +1,33 @@
+// =============================================================================
+// 📚 BOOKS PAGE - Main library view for both admins and regular users
+// =============================================================================
+// 
+// ⚠️ ISSUES FOUND:
+// 1. No borrow button for regular users
+// 2. No "My Borrows" tab for regular users
+// 3. Missing BorrowBookModal import and usage
+//
+// ✅ FIXES:
+// 1. Added showBorrowButton and onBorrow props for non-admins
+// 2. Added tabs for "All Books" and "My Borrows"
+// 3. Added BorrowBookModal for borrowing
+// =============================================================================
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { LogOut } from 'lucide-react';
 import { useBooksStore } from '../../store/booksStore';
+import { useTransactionsStore } from '../../store/transactionsStore';
 import type { Book } from '../../types/book.types';
 import { BookCard } from '../../components/books/BookCard';
 import { AddBookModal } from '../../components/books/AddBookModal';
 import { EditBookModal } from '../../components/books/EditBookModal';
 import { DeleteBookModal } from '../../components/books/DeleteBookModal';
+import { BorrowBookModal } from '../../components/user/BorrowBookModal';
 import './BooksPage.css';
 
 const BooksPage: React.FC = () => {
-  console.log('BooksPage component loaded');
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
   const {
@@ -25,19 +41,46 @@ const BooksPage: React.FC = () => {
     clearError
   } = useBooksStore();
 
+  // ✅ NEW: Access transactions store for borrowing and My Borrows
+  const {
+    myBorrows,
+    fetchMyBorrows,
+    borrowBook,
+    returnBook,
+    isLoading: transactionLoading,
+    lastBorrowMessage
+  } = useTransactionsStore();
+
+  // Modal states
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [borrowModalOpen, setBorrowModalOpen] = useState(false);  // ✅ NEW
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // ✅ NEW: Tab state for switching between All Books and My Borrows
+  const [activeTab, setActiveTab] = useState<'all' | 'my-borrows'>('all');
+
+  // Check if user is admin
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchBooks();
+      fetchMyBorrows();  // ✅ Fetch user's borrows
     }
-  }, [isAuthenticated, fetchBooks]);
+  }, [isAuthenticated, fetchBooks, fetchMyBorrows]);
 
-  // Check if user is authenticated
+  // Refetch borrows after borrow action
+  useEffect(() => {
+    if (lastBorrowMessage) {
+      fetchMyBorrows();
+      fetchBooks();  // Refresh to update quantities
+    }
+  }, [lastBorrowMessage, fetchMyBorrows, fetchBooks]);
+
+  // Not authenticated
   if (!isAuthenticated) {
     return (
       <div className="books-page">
@@ -50,12 +93,7 @@ const BooksPage: React.FC = () => {
     );
   }
 
-  // Check if user is admin for management features
-  const isAdmin = user?.role === 'admin';
-  console.log('BooksPage - User:', user);
-  console.log('BooksPage - isAdmin:', isAdmin);
-  console.log('BooksPage - isAuthenticated:', isAuthenticated);
-
+  // Handlers
   const handleAddBook = async (bookData: any) => {
     try {
       await createBook(bookData);
@@ -70,7 +108,7 @@ const BooksPage: React.FC = () => {
     setEditModalOpen(true);
   };
 
-  const handleUpdateBook = async (id: string, bookData: any) => {
+  const handleUpdateBook = async (id: number, bookData: any) => {
     try {
       await updateBook(id, bookData);
       setEditModalOpen(false);
@@ -95,17 +133,46 @@ const BooksPage: React.FC = () => {
     }
   };
 
+  // ✅ NEW: Borrow handler for regular users
+  const handleBorrowClick = (book: Book) => {
+    setSelectedBook(book);
+    setBorrowModalOpen(true);
+  };
+
+  const handleBorrowSubmit = async (bookId: number) => {
+    try {
+      await borrowBook(bookId);
+      setBorrowModalOpen(false);
+      setSelectedBook(null);
+      // ✅ FIX: Immediately refresh both lists after borrow
+      await fetchMyBorrows();
+      await fetchBooks();
+    } catch (error) {
+      console.error('Failed to borrow book:', error);
+    }
+  };
+
+  // ✅ NEW: Return handler - with immediate refresh
+  const handleReturn = async (bookId: number) => {
+    try {
+      await returnBook(bookId);
+      // ✅ FIX: Immediately refresh both lists after return
+      await fetchMyBorrows();
+      await fetchBooks();
+    } catch (error) {
+      console.error('Failed to return book:', error);
+    }
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchBooks({ search: searchTerm.trim() });
+    fetchBooks();
   };
 
   const handleClearSearch = () => {
     setSearchTerm('');
     fetchBooks();
   };
-
-  console.log('BooksPage rendering - isAdmin:', isAdmin);
 
   return (
     <div className="books-page">
@@ -116,21 +183,23 @@ const BooksPage: React.FC = () => {
       </div>
 
       <div className="books-container">
-        {/* Admin Navigation */}
+        {/* Navigation */}
         <div className="admin-navigation">
           <nav className="admin-nav">
             <button
               className="nav-item active"
               onClick={() => navigate('/books')}
             >
-              📚 Books Management
+              📚 {isAdmin ? 'Books Management' : 'Browse Books'}
             </button>
-            <button
-              className="nav-item"
-              onClick={() => navigate('/transactions')}
-            >
-              📋 Transaction Management
-            </button>
+            {isAdmin && (
+              <button
+                className="nav-item"
+                onClick={() => navigate('/transactions')}
+              >
+                📋 Transaction Management
+              </button>
+            )}
             <button
               className="nav-item logout-btn"
               onClick={() => {
@@ -145,17 +214,17 @@ const BooksPage: React.FC = () => {
           </nav>
         </div>
 
+        {/* Header */}
         <div className="books-header">
           <div className="books-title-section">
-            <h1 className="books-title">Library Management</h1>
+            <h1 className="books-title">
+              {isAdmin ? 'Library Management' : 'Library'}
+            </h1>
             <p className="books-subtitle">
-              {isAdmin ? 'Manage your book collection' : 'Browse our book collection'}
+              {isAdmin
+                ? 'Manage your book collection'
+                : `Welcome, ${user?.username || 'Reader'}! Browse and borrow books.`}
             </p>
-          </div>
-
-          {/* Debug info - remove this after testing */}
-          <div style={{ position: 'absolute', top: '10px', right: '10px', background: 'red', color: 'white', padding: '5px', fontSize: '12px' }}>
-            Role: {user?.role || 'none'} | isAdmin: {isAdmin ? 'true' : 'false'}
           </div>
 
           {isAdmin && (
@@ -168,31 +237,52 @@ const BooksPage: React.FC = () => {
           )}
         </div>
 
-        <div className="books-controls">
-          <form onSubmit={handleSearch} className="search-form">
-            <div className="search-input-container">
-              <input
-                type="text"
-                placeholder="Search books by title, author..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
-              />
-              <button type="submit" className="search-btn">
-                🔍
-              </button>
-              {searchTerm && (
-                <button
-                  type="button"
-                  className="clear-search-btn"
-                  onClick={handleClearSearch}
-                >
-                  ✕
+        {/* ✅ NEW: Tabs for regular users to switch views */}
+        {!isAdmin && (
+          <div className="books-tabs">
+            <button
+              className={`books-tab ${activeTab === 'all' ? 'active' : ''}`}
+              onClick={() => setActiveTab('all')}
+            >
+              📚 All Books ({books.length})
+            </button>
+            <button
+              className={`books-tab ${activeTab === 'my-borrows' ? 'active' : ''}`}
+              onClick={() => setActiveTab('my-borrows')}
+            >
+              📖 My Borrows ({myBorrows.length})
+            </button>
+          </div>
+        )}
+
+        {/* Search (only for All Books tab) */}
+        {activeTab === 'all' && (
+          <div className="books-controls">
+            <form onSubmit={handleSearch} className="search-form">
+              <div className="search-input-container">
+                <input
+                  type="text"
+                  placeholder="Search books by title, author..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="search-input"
+                />
+                <button type="submit" className="search-btn">
+                  🔍
                 </button>
-              )}
-            </div>
-          </form>
-        </div>
+                {searchTerm && (
+                  <button
+                    type="button"
+                    className="clear-search-btn"
+                    onClick={handleClearSearch}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        )}
 
         {error && (
           <div className="error-message">
@@ -201,51 +291,99 @@ const BooksPage: React.FC = () => {
           </div>
         )}
 
+        {/* Content */}
         <div className="books-content">
-          {isLoading ? (
+          {isLoading || transactionLoading ? (
             <div className="loading-state">
               <div className="loading-spinner"></div>
-              <p>Loading books...</p>
+              <p>Loading...</p>
             </div>
-          ) : books.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-icon">📚</div>
-              <h3>No books found</h3>
-              <p>
-                {searchTerm
-                  ? 'Try adjusting your search terms or add some books to get started.'
-                  : 'Get started by adding your first book to the library.'
-                }
-              </p>
-              <div className="offline-notice">
-                <small>🔄 Working in offline mode - Backend server not available</small>
+          ) : activeTab === 'all' ? (
+            // ✅ ALL BOOKS VIEW
+            books.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">📚</div>
+                <h3>No books found</h3>
+                <p>
+                  {searchTerm
+                    ? 'Try adjusting your search terms.'
+                    : 'The library is empty.'}
+                </p>
+                {isAdmin && !searchTerm && (
+                  <button
+                    className="add-book-btn empty-add-btn"
+                    onClick={() => setAddModalOpen(true)}
+                  >
+                    ➕ Add Your First Book
+                  </button>
+                )}
               </div>
-              {!searchTerm && (
-                <button
-                  className="add-book-btn empty-add-btn"
-                  onClick={() => setAddModalOpen(true)}
-                >
-                  ➕ Add Your First Book
-                </button>
-              )}
-            </div>
+            ) : (
+              <div className="books-grid">
+                {books.map((book) => (
+                  <BookCard
+                    key={book.id}
+                    book={book}
+                    onEdit={isAdmin ? handleEditBook : undefined}
+                    onDelete={isAdmin ? handleDeleteBook : undefined}
+                    isAdmin={isAdmin}
+                    // ✅ NEW: Show borrow button for non-admins
+                    showBorrowButton={!isAdmin}
+                    onBorrow={!isAdmin ? handleBorrowClick : undefined}
+                  />
+                ))}
+              </div>
+            )
           ) : (
-            <div className="books-grid">
-              {books.map((book) => (
-                <BookCard
-                  key={book.id}
-                  book={book}
-                  onEdit={isAdmin ? handleEditBook : undefined}
-                  onDelete={isAdmin ? handleDeleteBook : undefined}
-                  isAdmin={isAdmin}
-                />
-              ))}
-            </div>
+            // ✅ NEW: MY BORROWS VIEW
+            myBorrows.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">📖</div>
+                <h3>No borrowed books</h3>
+                <p>You haven't borrowed any books yet. Browse the library to find something to read!</p>
+                <button
+                  className="add-book-btn"
+                  onClick={() => setActiveTab('all')}
+                >
+                  📚 Browse Books
+                </button>
+              </div>
+            ) : (
+              <div className="borrows-list">
+                {myBorrows.map((borrow) => (
+                  <div key={borrow.id} className="borrow-card">
+                    <div className="borrow-cover">
+                      {borrow.book_cover ? (
+                        <img src={borrow.book_cover} alt={borrow.book_title} />
+                      ) : (
+                        <div className="borrow-cover-placeholder">📚</div>
+                      )}
+                    </div>
+                    <div className="borrow-info">
+                      <h3>{borrow.book_title}</h3>
+                      <p>by {borrow.book_author}</p>
+                      <p className="borrow-date">
+                        Borrowed: {new Date(borrow.date).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="borrow-actions">
+                      <button
+                        className="return-btn"
+                        onClick={() => handleReturn(borrow.book_id)}
+                        disabled={transactionLoading}
+                      >
+                        {transactionLoading ? 'Returning...' : '📤 Return Book'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           )}
         </div>
       </div>
 
-      {/* Modals - Only show for admins */}
+      {/* Admin Modals */}
       {isAdmin && (
         <>
           <AddBookModal
@@ -278,6 +416,18 @@ const BooksPage: React.FC = () => {
           />
         </>
       )}
+
+      {/* ✅ NEW: Borrow Modal for regular users */}
+      <BorrowBookModal
+        isOpen={borrowModalOpen}
+        book={selectedBook}
+        onClose={() => {
+          setBorrowModalOpen(false);
+          setSelectedBook(null);
+        }}
+        onSubmit={handleBorrowSubmit}
+        isLoading={transactionLoading}
+      />
     </div>
   );
 };

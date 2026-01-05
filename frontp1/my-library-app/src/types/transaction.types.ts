@@ -1,19 +1,45 @@
+// =============================================================================
+// 💳 TRANSACTION TYPES
+// =============================================================================
+// 
+// ⚠️ ISSUE FOUND: TransactionCard expects nested book/user objects
+//    but the old type only had flat fields.
+// 
+// ✅ FIX: Add nested book/user properties for admin display.
+// =============================================================================
+
 export interface Transaction {
   id: number;
   bookId: number;
   userId: number;
   borrowDate: string;
-  expected_return_date: string; // تم التعديل ليطابق الـ API
+  expected_return_date: string;
+  expectedReturnDate?: string;  // ✅ NEW: TransactionCard uses camelCase
   status: 'active' | 'returned' | 'overdue';
   notes?: string;
+  actualReturnDate?: string;
+
+  // ✅ NEW: Nested book object for TransactionCard display
+  book?: {
+    id?: number;
+    title: string;
+    author: string;
+    coverImageUrl?: string;
+  };
+
+  // ✅ NEW: Nested user object for TransactionCard display
+  user?: {
+    id?: number;
+    username: string;
+    email?: string;
+  };
 }
 
 export interface BorrowFormData {
   bookId: string | number;
-  expectedReturnDate: string; // سنحولها عند الإرسال لـ expected_return_date
+  expectedReturnDate: string;
   notes?: string;
 }
-
 
 export interface ReturnFormData {
   transactionId: string;

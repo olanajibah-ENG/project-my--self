@@ -1,0 +1,395 @@
+{
+	"info": {
+		"_postman_id": "gallery-api-collection",
+		"name": "Gallery API",
+		"description": "Collection لحالات اختبار Gallery API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Albums",
+			"item": [
+				{
+					"name": "1. Create Album - Success",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has album data\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('title');",
+									"    pm.expect(jsonData).to.have.property('created_at');",
+									"    pm.expect(jsonData).to.have.property('photos');",
+									"    ",
+									"    // Save album_id for later use",
+									"    pm.environment.set(\"album_id\", jsonData.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"عطلة صيفية 2024\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/albums/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"albums",
+								""
+							]
+						},
+						"description": "إنشاء ألبوم جديد بنجاح"
+					}
+				},
+				{
+					"name": "2. Create Album - Missing Title (Error)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Error message is correct\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('error');",
+									"    pm.expect(jsonData.error).to.eql('Title is required');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/albums/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"albums",
+								""
+							]
+						},
+						"description": "محاولة إنشاء ألبوم بدون عنوان (يجب أن يفشل)"
+					}
+				},
+				{
+					"name": "3. Get All Albums",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/albums/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"albums",
+								""
+							]
+						},
+						"description": "الحصول على جميع الألبومات"
+					}
+				}
+			],
+			"description": "Endpoints خاصة بالألبومات"
+		},
+		{
+			"name": "Photos",
+			"item": [
+				{
+					"name": "1. Upload Photo - Success",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Make sure album_id is set",
+									"if (!pm.environment.get(\"album_id\")) {",
+									"    pm.environment.set(\"album_id\", \"1\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has photo data\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('album');",
+									"    pm.expect(jsonData).to.have.property('image');",
+									"    pm.expect(jsonData).to.have.property('caption');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "album",
+									"value": "{{album_id}}",
+									"type": "text"
+								},
+								{
+									"key": "image",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "caption",
+									"value": "صورة الشاطئ الجميل",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/upload/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"upload",
+								""
+							]
+						},
+						"description": "رفع صورة بنجاح للألبوم"
+					}
+				},
+				{
+					"name": "2. Upload Photo - Without Caption",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.environment.get(\"album_id\")) {",
+									"    pm.environment.set(\"album_id\", \"1\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Caption is empty\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.caption).to.eql('');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "album",
+									"value": "{{album_id}}",
+									"type": "text"
+								},
+								{
+									"key": "image",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/upload/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"upload",
+								""
+							]
+						},
+						"description": "رفع صورة بدون caption"
+					}
+				},
+				{
+					"name": "3. Upload Photo - Missing Album ID (Error)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400 or 500\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([400, 500]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "image",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/upload/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"upload",
+								""
+							]
+						},
+						"description": "محاولة رفع صورة بدون album ID (يجب أن يفشل)"
+					}
+				},
+				{
+					"name": "4. Upload Photo - Invalid Album ID (Error)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 404 or 500\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([404, 500]);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "album",
+									"value": "999",
+									"type": "text"
+								},
+								{
+									"key": "image",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/upload/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"upload",
+								""
+							]
+						},
+						"description": "محاولة رفع صورة لألبوم غير موجود (يجب أن يفشل)"
+					}
+				}
+			],
+			"description": "Endpoints خاصة برفع الصور"
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "album_id",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
+

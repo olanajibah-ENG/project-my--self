@@ -1,0 +1,304 @@
+.photo-grid-container {
+    width: 100%;
+    padding: 20px;
+    animation: fadeIn 0.6s ease-out;
+}
+
+.grid-title {
+    color: #333;
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: right;
+    animation: slideInRight 0.6s ease-out;
+}
+
+.title-icon {
+    font-size: 36px;
+    animation: rotate 3s linear infinite;
+}
+
+.albums-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 25px;
+    padding: 10px 0;
+}
+
+.album-card {
+    background: white;
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    animation: fadeInUp 0.6s ease-out both;
+    position: relative;
+    overflow: hidden;
+}
+
+.album-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #f5576c);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s ease;
+}
+
+.album-card:hover::before {
+    transform: scaleX(1);
+}
+
+.album-card:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+
+.album-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.album-title {
+    color: #333;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0;
+    flex: 1;
+    text-align: right;
+}
+
+.album-date {
+    color: #999;
+    font-size: 12px;
+    background: #f5f5f5;
+    padding: 6px 12px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+.photos-container {
+    position: relative;
+}
+
+.photos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.photo-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    animation: scaleIn 0.4s ease-out;
+}
+
+.photo-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.photo-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.photo-item:hover .photo-image {
+    transform: scale(1.15) rotate(2deg);
+}
+
+.photo-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+    padding: 15px 10px 10px;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+}
+
+.photo-item:hover .photo-overlay {
+    transform: translateY(0);
+}
+
+.photo-caption {
+    color: white;
+    font-size: 12px;
+    margin: 0;
+    text-align: right;
+    line-height: 1.4;
+    max-height: 40px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.photo-count {
+    text-align: center;
+    color: #667eea;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 8px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+    border-radius: 10px;
+    margin-top: 10px;
+}
+
+.empty-album {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+}
+
+.empty-album-icon {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 10px;
+    opacity: 0.5;
+    animation: float 3s ease-in-out infinite;
+}
+
+.empty-album-text {
+    margin: 0;
+    font-size: 14px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    animation: fadeIn 0.6s ease-out;
+}
+
+.empty-icon {
+    font-size: 80px;
+    display: block;
+    margin-bottom: 20px;
+    animation: bounce 2s infinite;
+    opacity: 0.6;
+}
+
+.empty-title {
+    color: #333;
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+}
+
+.empty-message {
+    color: #999;
+    font-size: 16px;
+    margin: 0;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-15px);
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .albums-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .grid-title {
+        font-size: 24px;
+    }
+
+    .album-title {
+        font-size: 18px;
+    }
+
+    .photos-grid {
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 8px;
+    }
+}
+

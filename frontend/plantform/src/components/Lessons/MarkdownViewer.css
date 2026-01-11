@@ -1,0 +1,290 @@
+/* src/components/Lessons/MarkdownViewer.css */
+@import '../Courses/CourseAnimations.css';
+
+.markdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease-out;
+  padding: 20px;
+}
+
+.markdown-modal {
+  background: white;
+  border-radius: 24px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px rgba(139, 92, 246, 0.3);
+  animation: fadeInScale 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  overflow: hidden;
+  border: 2px solid #ddd6fe;
+}
+
+.markdown-header {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 3s ease infinite;
+  padding: 24px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.markdown-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.markdown-icon {
+  font-size: 32px;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+.markdown-title h2 {
+  color: white;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.markdown-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.markdown-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg) scale(1.1);
+}
+
+.markdown-content {
+  padding: 32px;
+  overflow-y: auto;
+  flex: 1;
+  background: linear-gradient(135deg, #fefcff 0%, #faf5ff 100%);
+}
+
+.markdown-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 20px;
+}
+
+.markdown-loading .loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #ddd6fe;
+  border-top-color: #8b5cf6;
+  border-radius: 50%;
+  animation: rotate 1s linear infinite;
+}
+
+.markdown-loading p {
+  color: #8b5cf6;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* Markdown Body Styling */
+.markdown-body {
+  color: #1f2937;
+  line-height: 1.8;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.markdown-body h1 {
+  font-size: 32px;
+  font-weight: 800;
+  margin: 24px 0 16px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  border-bottom: 3px solid #ddd6fe;
+  padding-bottom: 12px;
+}
+
+.markdown-body h2 {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 20px 0 12px;
+  color: #8b5cf6;
+}
+
+.markdown-body h3 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 16px 0 10px;
+  color: #a78bfa;
+}
+
+.markdown-body p {
+  margin: 12px 0;
+  font-size: 16px;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin: 12px 0;
+  padding-right: 24px;
+}
+
+.markdown-body li {
+  margin: 8px 0;
+  font-size: 16px;
+}
+
+.markdown-body code {
+  background: #f3f4f6;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: #ec4899;
+}
+
+.markdown-body pre {
+  background: #1f2937;
+  padding: 20px;
+  border-radius: 12px;
+  overflow-x: auto;
+  margin: 16px 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.markdown-body pre code {
+  background: transparent;
+  color: #e5e7eb;
+  padding: 0;
+  font-size: 14px;
+}
+
+.markdown-body blockquote {
+  border-right: 4px solid #8b5cf6;
+  padding: 12px 20px;
+  margin: 16px 0;
+  background: #faf5ff;
+  border-radius: 8px;
+  font-style: italic;
+}
+
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.markdown-body th {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+  color: white;
+  padding: 12px;
+  text-align: right;
+  font-weight: 600;
+}
+
+.markdown-body td {
+  padding: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.markdown-body tr:hover {
+  background: #faf5ff;
+}
+
+.markdown-body a {
+  color: #8b5cf6;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.markdown-body a:hover {
+  color: #7c3aed;
+  text-decoration: underline;
+}
+
+.markdown-body img {
+  max-width: 100%;
+  border-radius: 12px;
+  margin: 16px 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.markdown-body hr {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #ddd6fe, transparent);
+  margin: 24px 0;
+}
+
+/* Scrollbar */
+.markdown-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.markdown-content::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+.markdown-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+  border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+  .markdown-modal {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .markdown-header {
+    padding: 20px;
+  }
+
+  .markdown-title h2 {
+    font-size: 20px;
+  }
+
+  .markdown-content {
+    padding: 20px;
+  }
+
+  .markdown-body h1 {
+    font-size: 26px;
+  }
+
+  .markdown-body h2 {
+    font-size: 22px;
+  }
+}

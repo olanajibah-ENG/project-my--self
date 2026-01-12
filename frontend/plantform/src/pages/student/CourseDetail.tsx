@@ -120,7 +120,18 @@ export default function CourseDetail() {
           {/* Sidebar */}
           <div className="lg:col-span-1">
             <div className="sticky top-24 bg-white rounded-xl border p-6">
-              {isEnrolled ? (
+              {course.is_owner ? (
+                <>
+                  <p className="text-gray-600 mb-4">
+                    You are the instructor of this course
+                  </p>
+                  <Link to={`/instructor/courses/${courseId}/edit`}>
+                    <Button className="w-full">
+                      Edit Course
+                    </Button>
+                  </Link>
+                </>
+              ) : isEnrolled ? (
                 <>
                   <div className="mb-4">
                     <div className="flex justify-between text-sm mb-2">

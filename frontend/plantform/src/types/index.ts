@@ -17,6 +17,9 @@ export interface Course {
   modules_count?: number
   lessons_count?: number
   enrolled_count?: number
+  is_enrolled?: boolean
+  is_owner?: boolean
+  modules?: Module[]
 }
 
 export interface Module {

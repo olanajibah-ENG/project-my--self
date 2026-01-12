@@ -14,7 +14,7 @@ export default function CourseDetail() {
 
   const { course, isLoading: courseLoading, error } = useCourse(courseId)
   const { isEnrolled, isLoading: enrollmentLoading, isEnrolling, enroll } = useEnrollment(courseId)
-  const { completedLessons, getProgress } = useProgress()
+  const { completedLessons, getProgressForCourse } = useProgress()
 
   const isLoading = courseLoading || enrollmentLoading
 
@@ -136,12 +136,18 @@ export default function CourseDetail() {
                   <div className="mb-4">
                     <div className="flex justify-between text-sm mb-2">
                       <span>Your progress</span>
-                      <span>{getProgress(totalLessons)}%</span>
+                      <span>{getProgressForCourse(
+                        course?.modules?.flatMap(m => m.lessons?.map(l => l.id) || []) || [],
+                        totalLessons
+                      )}%</span>
                     </div>
                     <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-brand-600 transition-all"
-                        style={{ width: `${getProgress(totalLessons)}%` }}
+                        style={{ width: `${getProgressForCourse(
+                          course?.modules?.flatMap(m => m.lessons?.map(l => l.id) || []) || [],
+                          totalLessons
+                        )}%` }}
                       />
                     </div>
                   </div>

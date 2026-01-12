@@ -10,19 +10,42 @@ import { Input } from '@/components/ui/input'
 import ModulePanel from '@/components/instructor/ModulePanel'
 import LessonEditor from '@/components/instructor/LessonEditor'
 import type { Course, Module, Lesson } from '@/types'
+import { useToast } from '@/hooks/useToast'
+import { useUndoStack } from '@/hooks/useUndoStack'
+import { courseSchema, moduleSchema } from '@/lib/validation'
+import { z } from 'zod'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 
 type ModuleWithLessons = Module & { lessons?: Lesson[] }
 
 export default function CourseBuilder() {
-  const { courseId } = useParams<{ courseId: string }>()
+  const { id: courseId } = useParams<{ id: string }>()
   const id = courseId ? parseInt(courseId) : null
   const { user, isLoading: isAuthLoading } = useAuth()
+  const { toast } = useToast()
+  const { pushUndo, popUndo, hasUndo } = useUndoStack()
 
   // Course state
   const [course, setCourse] = useState<Course | null>(null)
   const [modules, setModules] = useState<ModuleWithLessons[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Validation errors
+  const [, setValidationErrors] = useState<Record<string, string>>({})
+
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    onConfirm: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  })
 
   // Selection state
   const [selectedModule, setSelectedModule] = useState<Module | null>(null)
@@ -86,6 +109,21 @@ export default function CourseBuilder() {
   const saveTitle = async () => {
     if (!course || !editedTitle.trim()) return
 
+    // Validate course title
+    try {
+      courseSchema.parse({ title: editedTitle.trim(), description: course.description || '' })
+      setValidationErrors(prev => ({ ...prev, courseTitle: '' }))
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const titleError = error.errors.find(e => e.path[0] === 'title')
+        if (titleError) {
+          setValidationErrors(prev => ({ ...prev, courseTitle: titleError.message }))
+          toast.error(titleError.message)
+          return
+        }
+      }
+    }
+
     setIsSavingTitle(true)
     try {
       const updated = await courseService.updateCourse(course.id, {
@@ -93,8 +131,10 @@ export default function CourseBuilder() {
       })
       setCourse(updated)
       setIsEditingTitle(false)
+      toast.success('Course title updated successfully')
     } catch (err) {
       console.error('Failed to update course title:', err)
+      toast.error('Failed to update course title')
     } finally {
       setIsSavingTitle(false)
     }
@@ -124,12 +164,31 @@ export default function CourseBuilder() {
       setModules(prev => [...prev, { ...created, lessons: [] }])
       setSelectedModule(created)
       setSelectedLesson(null)
+      toast.success('Module created successfully')
     } catch (err) {
       console.error('Failed to create module:', err)
+      toast.error('Failed to create module')
     }
   }
 
   const handleEditModule = async (module: Module) => {
+    // Validate module data
+    try {
+      moduleSchema.parse({
+        title: module.title,
+        description: module.description || '',
+        order: module.order
+      })
+      setValidationErrors(prev => ({ ...prev, [`module_${module.id}`]: '' }))
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const errorMessage = error.errors[0]?.message || 'Validation failed'
+        setValidationErrors(prev => ({ ...prev, [`module_${module.id}`]: errorMessage }))
+        toast.error(errorMessage)
+        return
+      }
+    }
+
     try {
       const updated = await moduleService.updateModule(module.id, {
         title: module.title,
@@ -138,12 +197,48 @@ export default function CourseBuilder() {
       setModules(prev =>
         prev.map(m => m.id === updated.id ? { ...m, ...updated } : m)
       )
+      toast.success('Module updated successfully')
     } catch (err) {
       console.error('Failed to update module:', err)
+      toast.error('Failed to update module')
     }
   }
 
   const handleDeleteModule = async (moduleId: number) => {
+    const module = modules.find(m => m.id === moduleId)
+    if (!module) return
+
+    const lessonCount = module.lessons?.length || 0
+
+    // Show confirmation dialog if module has lessons
+    if (lessonCount > 0) {
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Delete Module?',
+        message: `This module contains ${lessonCount} lesson${lessonCount > 1 ? 's' : ''}. Deleting it will remove all lessons permanently. Are you sure?`,
+        onConfirm: () => confirmDeleteModule(moduleId, module)
+      })
+    } else {
+      // Delete directly if no lessons
+      await confirmDeleteModule(moduleId, module)
+    }
+  }
+
+  const confirmDeleteModule = async (moduleId: number, module: ModuleWithLessons) => {
+    // Close confirmation dialog
+    setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+
+    // Store for undo before deletion
+    if (id) {
+      pushUndo({
+        id: crypto.randomUUID(),
+        type: 'delete_module',
+        timestamp: Date.now(),
+        data: module,
+        parentId: id
+      })
+    }
+
     try {
       await moduleService.deleteModule(moduleId)
       setModules(prev => prev.filter(m => m.id !== moduleId))
@@ -153,8 +248,11 @@ export default function CourseBuilder() {
         setSelectedModule(null)
         setSelectedLesson(null)
       }
+
+      toast.success('Module deleted successfully. Click undo to restore.')
     } catch (err) {
       console.error('Failed to delete module:', err)
+      toast.error('Failed to delete module')
     }
   }
 
@@ -192,8 +290,10 @@ export default function CourseBuilder() {
         moduleService.updateModule(currentModule.id, { order: swapModule.order }),
         moduleService.updateModule(swapModule.id, { order: currentModule.order })
       ])
+      toast.success('Modules reordered successfully')
     } catch (err) {
       console.error('Failed to reorder modules:', err)
+      toast.error('Failed to reorder modules')
       // Revert on error
       fetchCourseData()
     }
@@ -225,12 +325,38 @@ export default function CourseBuilder() {
       )
       setSelectedLesson(created)
       setSelectedModule(module)
+      toast.success('Lesson created successfully')
     } catch (err) {
       console.error('Failed to create lesson:', err)
+      toast.error('Failed to create lesson')
     }
   }
 
   const handleDeleteLesson = async (lessonId: number) => {
+    // Find the lesson and its parent module
+    let lessonToDelete: Lesson | undefined
+    let parentModuleId: number | undefined
+
+    for (const module of modules) {
+      const lesson = module.lessons?.find(l => l.id === lessonId)
+      if (lesson) {
+        lessonToDelete = lesson
+        parentModuleId = module.id
+        break
+      }
+    }
+
+    if (!lessonToDelete || !parentModuleId) return
+
+    // Store for undo before deletion
+    pushUndo({
+      id: crypto.randomUUID(),
+      type: 'delete_lesson',
+      timestamp: Date.now(),
+      data: lessonToDelete,
+      parentId: parentModuleId
+    })
+
     try {
       await lessonService.deleteLesson(lessonId)
       setModules(prev =>
@@ -244,8 +370,11 @@ export default function CourseBuilder() {
       if (selectedLesson?.id === lessonId) {
         setSelectedLesson(null)
       }
+
+      toast.success('Lesson deleted successfully. Click undo to restore.')
     } catch (err) {
       console.error('Failed to delete lesson:', err)
+      toast.error('Failed to delete lesson')
     }
   }
 
@@ -292,8 +421,10 @@ export default function CourseBuilder() {
         lessonService.updateLesson(currentLesson.id, { order: swapLesson.order }),
         lessonService.updateLesson(swapLesson.id, { order: currentLesson.order })
       ])
+      toast.success('Lessons reordered successfully')
     } catch (err) {
       console.error('Failed to reorder lessons:', err)
+      toast.error('Failed to reorder lessons')
       // Revert on error
       fetchCourseData()
     }
@@ -319,8 +450,10 @@ export default function CourseBuilder() {
 
       // Update selected lesson
       setSelectedLesson(updated)
+      toast.success('Lesson saved successfully')
     } catch (err) {
       console.error('Failed to save lesson:', err)
+      toast.error('Failed to save lesson')
       throw err
     } finally {
       setIsSavingLesson(false)
@@ -328,6 +461,13 @@ export default function CourseBuilder() {
   }
 
   const handleUploadVideo = async (lessonId: number, file: File) => {
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024
+    if (file.size > maxSize) {
+      toast.error('Video file must be less than 10MB')
+      return
+    }
+
     try {
       const updated = await lessonService.uploadVideo(lessonId, file)
 
@@ -345,15 +485,73 @@ export default function CourseBuilder() {
       if (selectedLesson?.id === lessonId) {
         setSelectedLesson(updated)
       }
+      toast.success('Video uploaded successfully')
     } catch (err) {
       console.error('Failed to upload video:', err)
-      alert('Failed to upload video. Please try again.')
+      toast.error('Failed to upload video. Please try again.')
     }
   }
 
   const handleSelectModule = (module: Module) => {
     setSelectedModule(module)
     setSelectedLesson(null)
+  }
+
+  const handleUndo = async () => {
+    const action = popUndo()
+    if (!action) return
+
+    try {
+      if (action.type === 'delete_lesson') {
+        // Recreate the lesson
+        const lesson = action.data as Lesson
+        const created = await lessonService.createLesson(action.parentId, {
+          title: lesson.title,
+          content_markdown: lesson.content_markdown,
+          order: lesson.order
+        })
+
+        // Add back to modules state
+        setModules(prev =>
+          prev.map(m =>
+            m.id === action.parentId
+              ? { ...m, lessons: [...(m.lessons || []), created] }
+              : m
+          )
+        )
+
+        toast.success('Lesson restored successfully')
+      } else if (action.type === 'delete_module') {
+        // Recreate the module
+        const module = action.data as ModuleWithLessons
+        const created = await moduleService.createModule(action.parentId, {
+          title: module.title,
+          description: module.description,
+          order: module.order
+        })
+
+        // Recreate lessons if any
+        const newLessons: Lesson[] = []
+        if (module.lessons && module.lessons.length > 0) {
+          for (const lesson of module.lessons) {
+            const createdLesson = await lessonService.createLesson(created.id, {
+              title: lesson.title,
+              content_markdown: lesson.content_markdown,
+              order: lesson.order
+            })
+            newLessons.push(createdLesson)
+          }
+        }
+
+        // Add back to modules state
+        setModules(prev => [...prev, { ...created, lessons: newLessons }])
+
+        toast.success('Module restored successfully')
+      }
+    } catch (err) {
+      console.error('Failed to undo:', err)
+      toast.error('Failed to undo action')
+    }
   }
 
   const handleSelectLesson = (lesson: Lesson) => {
@@ -467,6 +665,16 @@ export default function CourseBuilder() {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2">
+            {hasUndo && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleUndo}
+                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+              >
+                Undo Delete
+              </Button>
+            )}
             <Link to={`/courses/${course.id}`}>
               <Button variant="outline" size="sm">
                 Preview Course
@@ -510,6 +718,18 @@ export default function CourseBuilder() {
           isSaving={isSavingLesson}
         />
       </div>
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, CheckCircle, Menu } from 'lucide-react'
 import { useCourse } from '@/hooks/useCourses'
 import { useProgress } from '@/hooks/useProgress'
 import { useEnrollment } from '@/hooks/useEnrollment'
+import { useToastContext } from '@/context/ToastContext'
 import { Button } from '@/components/ui/button'
 import Header from '@/components/layout/Header'
 import LessonSidebar from '@/components/lesson/LessonSidebar'
@@ -20,6 +21,7 @@ export default function LearningView() {
 
   const { course, isLoading } = useCourse(courseId)
   const { completedLessons, markComplete, isComplete } = useProgress()
+  const { addToast } = useToastContext()
 
   const isLoadingAll = isLoading || enrollmentLoading
 
@@ -53,7 +55,11 @@ export default function LearningView() {
 
   const handleMarkComplete = async () => {
     if (currentLesson) {
-      await markComplete(currentLesson.id)
+      try {
+        await markComplete(currentLesson.id)
+      } catch {
+        addToast('error', 'Failed to mark lesson complete. Please try again.')
+      }
     }
   }
 

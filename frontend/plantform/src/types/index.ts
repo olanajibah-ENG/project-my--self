@@ -46,6 +46,13 @@ export interface Enrollment {
   course: number
   enrolled_at: string
   completed_lessons: number[]
+  course_details?: Course
+}
+
+export interface CompletedLessonsResponse {
+  message: string
+  count: number
+  results: Array<{ id: number; title: string; content_markdown: string; video_file: string | null; order: number; module: number }>
 }
 
 export interface AuthTokens {

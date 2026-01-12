@@ -22,13 +22,33 @@ export function useProgress() {
   }, [fetchProgress])
 
   const markComplete = useCallback(async (lessonId: number) => {
-    await progressService.markLessonComplete(lessonId)
+    // Optimistic update
     setCompletedLessons(prev => [...prev, lessonId])
+
+    try {
+      await progressService.markLessonComplete(lessonId)
+      // Success - keep optimistic update
+    } catch (error) {
+      // Revert optimistic update
+      setCompletedLessons(prev => prev.filter(id => id !== lessonId))
+      // Re-throw for caller to handle error message
+      throw error
+    }
   }, [])
 
   const markIncomplete = useCallback(async (lessonId: number) => {
-    await progressService.markLessonIncomplete(lessonId)
+    // Optimistic update
     setCompletedLessons(prev => prev.filter(id => id !== lessonId))
+
+    try {
+      await progressService.markLessonIncomplete(lessonId)
+      // Success - keep optimistic update
+    } catch (error) {
+      // Revert optimistic update
+      setCompletedLessons(prev => [...prev, lessonId])
+      // Re-throw for caller to handle error message
+      throw error
+    }
   }, [])
 
   const isComplete = useCallback((lessonId: number) => {
@@ -39,6 +59,13 @@ export function useProgress() {
     return progressService.calculateProgress(completedLessons, totalLessons)
   }, [completedLessons])
 
+  const getProgressForCourse = useCallback((courseLessonIds: number[], totalLessons: number) => {
+    if (totalLessons === 0) return 0
+    const idsSet = new Set(courseLessonIds)
+    const completedInCourse = completedLessons.filter(id => idsSet.has(id)).length
+    return Math.round((completedInCourse / totalLessons) * 100)
+  }, [completedLessons])
+
   return {
     completedLessons,
     isLoading,
@@ -46,6 +73,7 @@ export function useProgress() {
     markIncomplete,
     isComplete,
     getProgress,
+    getProgressForCourse,
     refetch: fetchProgress
   }
 }

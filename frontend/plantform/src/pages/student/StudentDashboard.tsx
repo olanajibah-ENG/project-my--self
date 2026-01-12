@@ -2,19 +2,26 @@ import { Link } from 'react-router-dom'
 import { BookOpen, ArrowRight } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useMyEnrollments } from '@/hooks/useEnrollment'
-import { useProgress } from '@/hooks/useProgress'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import Header from '@/components/layout/Header'
 import CourseCard from '@/components/course/CourseCard'
+import type { EnrollmentWithCourse } from '@/services/enrollment.service'
+
+// Calculate progress from enrollment data (completed_lessons is already per-enrollment)
+function getEnrollmentProgress(enrollment: EnrollmentWithCourse): number {
+  const totalLessons = enrollment.course_details?.lessons_count || 0
+  if (totalLessons === 0) return 0
+  const completedCount = enrollment.completed_lessons?.length || 0
+  return Math.round((completedCount / totalLessons) * 100)
+}
 
 export default function StudentDashboard() {
   const { user } = useAuth()
   const { enrollments, isLoading } = useMyEnrollments()
-  const { getProgress } = useProgress()
 
-  // Find the most recent enrollment for "Continue Learning"
-  const lastEnrollment = enrollments[0]
+  // Find the first incomplete course for "Continue Learning" (skip 100% complete courses)
+  const continueEnrollment = enrollments.find(e => getEnrollmentProgress(e) < 100)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -55,8 +62,8 @@ export default function StudentDashboard() {
           </Card>
         ) : (
           <>
-            {/* Continue Learning */}
-            {lastEnrollment?.course_details && (
+            {/* Continue Learning - only show if there's an incomplete course */}
+            {continueEnrollment?.course_details && (
               <Card className="mb-8 bg-gradient-to-r from-brand-50 to-brand-100 border-brand-200">
                 <CardHeader>
                   <CardTitle className="text-lg text-brand-800">
@@ -67,13 +74,13 @@ export default function StudentDashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-xl font-semibold text-gray-900">
-                        {lastEnrollment.course_details.title}
+                        {continueEnrollment.course_details.title}
                       </h3>
                       <p className="text-gray-600 mt-1">
-                        {getProgress(lastEnrollment.course_details.lessons_count || 0)}% complete
+                        {getEnrollmentProgress(continueEnrollment)}% complete
                       </p>
                     </div>
-                    <Link to={`/courses/${lastEnrollment.course}/learn`}>
+                    <Link to={`/courses/${continueEnrollment.course}/learn`}>
                       <Button>
                         Continue
                         <ArrowRight className="ml-2 h-4 w-4" />
@@ -100,7 +107,7 @@ export default function StudentDashboard() {
                     <CourseCard
                       key={enrollment.id}
                       course={enrollment.course_details}
-                      progress={getProgress(enrollment.course_details.lessons_count || 0)}
+                      progress={getEnrollmentProgress(enrollment)}
                     />
                   )
                 ))}

@@ -1,4 +1,5 @@
 import api from '@/lib/api'
+import type { CompletedLessonsResponse } from '@/types'
 
 export interface ProgressData {
   completed_lessons: number[]
@@ -8,8 +9,9 @@ export interface ProgressData {
 
 export const progressService = {
   async getCompletedLessons(): Promise<number[]> {
-    const response = await api.get('/progress/completed-lessons/')
-    return response.data.completed_lessons || []
+    const response = await api.get<CompletedLessonsResponse>('/progress/completed-lessons/')
+    // Backend returns { results: Lesson[] }, extract IDs
+    return response.data.results?.map(lesson => lesson.id) || []
   },
 
   async markLessonComplete(lessonId: number): Promise<void> {

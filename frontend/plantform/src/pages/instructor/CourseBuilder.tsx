@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Pencil, Check, X, Menu } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 import { courseService } from '@/services/course.service'
 import { moduleService, type CreateModuleData } from '@/services/module.service'
 import { lessonService, type CreateLessonData } from '@/services/lesson.service'
@@ -15,6 +16,7 @@ type ModuleWithLessons = Module & { lessons?: Lesson[] }
 export default function CourseBuilder() {
   const { courseId } = useParams<{ courseId: string }>()
   const id = courseId ? parseInt(courseId) : null
+  const { user } = useAuth()
 
   // Course state
   const [course, setCourse] = useState<Course | null>(null)
@@ -46,6 +48,12 @@ export default function CourseBuilder() {
       // Fetch course - it includes modules with lessons from the backend serializer
       const courseData = await courseService.getCourse(id)
 
+      // Check ownership
+      if (courseData.instructor !== user?.id) {
+        setError("You don't have permission to edit this course")
+        return
+      }
+
       setCourse(courseData)
 
       // Use modules from course response, or empty array if none
@@ -61,7 +69,7 @@ export default function CourseBuilder() {
     } finally {
       setIsLoading(false)
     }
-  }, [id])
+  }, [id, user?.id])
 
   useEffect(() => {
     fetchCourseData()

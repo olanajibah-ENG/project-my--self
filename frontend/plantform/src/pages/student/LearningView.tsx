@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, CheckCircle, Menu } from 'lucide-react'
 import { useCourse } from '@/hooks/useCourses'
 import { useProgress } from '@/hooks/useProgress'
+import { useEnrollment } from '@/hooks/useEnrollment'
 import { Button } from '@/components/ui/button'
 import Header from '@/components/layout/Header'
 import LessonSidebar from '@/components/lesson/LessonSidebar'
@@ -15,8 +16,12 @@ export default function LearningView() {
   const [searchParams, setSearchParams] = useSearchParams()
   const courseId = id ? parseInt(id) : null
 
+  const { isEnrolled, isLoading: enrollmentLoading } = useEnrollment(courseId)
+
   const { course, isLoading } = useCourse(courseId)
   const { completedLessons, markComplete, isComplete } = useProgress()
+
+  const isLoadingAll = isLoading || enrollmentLoading
 
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -62,12 +67,29 @@ export default function LearningView() {
   )
   const lessonIndexInModule = currentModule?.lessons?.findIndex(l => l.id === currentLesson?.id) ?? 0
 
-  if (isLoading) {
+  if (isLoadingAll) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+        </div>
+      </div>
+    )
+  }
+
+  // Check access - must be enrolled or be the instructor
+  const hasAccess = course?.is_owner || isEnrolled
+
+  if (!isLoadingAll && course && !hasAccess) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex flex-col items-center justify-center py-12">
+          <p className="text-gray-600 mb-4">You need to enroll in this course to access the lessons.</p>
+          <Link to={`/courses/${courseId}`}>
+            <Button>View Course Details</Button>
+          </Link>
         </div>
       </div>
     )

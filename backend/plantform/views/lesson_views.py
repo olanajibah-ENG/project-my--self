@@ -9,7 +9,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from plantform.models.lesson import Lesson
 from plantform.models.module import Module
 from plantform.serializers.course_serializers import LessonSerializer
-from plantform.permissions import IsInstructor
+from plantform.permissions import IsInstructor, IsLessonOwner
 from plantform.models.enrollment import Enrollment
 from plantform.services.enrollment_service import EnrollmentService
 
@@ -43,8 +43,10 @@ class LessonViewSet(viewsets.ModelViewSet):
         return queryset.filter(module__course_id__in=enrolled_course_ids)
 
     def get_permissions(self):
-        if self.action in ["create", "update", "partial_update", "destroy", "reorder"]:
+        if self.action in ["create", "reorder"]:
             self.permission_classes = [IsAuthenticated, IsInstructor]
+        elif self.action in ["update", "partial_update", "destroy"]:
+            self.permission_classes = [IsAuthenticated, IsLessonOwner]
         return super().get_permissions()
 
     def list(self, request, *args, **kwargs):

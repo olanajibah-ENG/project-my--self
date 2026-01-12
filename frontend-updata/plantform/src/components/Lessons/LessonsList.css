@@ -1,0 +1,129 @@
+/* src/components/Lessons/LessonsList.css */
+@import '../Courses/CourseAnimations.css';
+
+.lessons-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #fef3f6 0%, #fce7f3 50%, #fbcfe8 100%);
+  transition: all 0.3s ease;
+}
+
+/* RTL Support */
+.lessons-container.rtl {
+  direction: rtl;
+}
+
+.lessons-container.ltr {
+  direction: ltr;
+}
+
+.lessons-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+  gap: 20px;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.lessons-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 40px;
+  animation: fadeInUp 0.6s ease-out;
+  animation-delay: 0.2s;
+  animation-fill-mode: backwards;
+}
+
+.lessons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 24px;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.lessons-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: 20px;
+}
+
+.loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 6px solid #fce7f3;
+  border-top-color: #ec4899;
+  border-radius: 50%;
+  animation: rotate 1s linear infinite;
+}
+
+.loading-text {
+  font-size: 18px;
+  color: #ec4899;
+  font-weight: 600;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* RTL Specific Styles */
+.rtl .lessons-header {
+  flex-direction: row-reverse;
+}
+
+.rtl .header-content {
+  text-align: right;
+}
+
+.ltr .header-content {
+  text-align: left;
+}
+
+/* Success Toast RTL */
+.rtl .success-toast {
+  right: auto;
+  left: 20px;
+}
+
+.ltr .success-toast {
+  right: 20px;
+  left: auto;
+}
+
+@media (max-width: 1024px) {
+  .lessons-grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .lessons-container {
+    padding: 24px 16px;
+  }
+
+  .lessons-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .rtl .lessons-header {
+    align-items: flex-end;
+  }
+
+  .btn-create {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .lessons-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lessons-stats {
+    grid-template-columns: 1fr;
+  }
+}

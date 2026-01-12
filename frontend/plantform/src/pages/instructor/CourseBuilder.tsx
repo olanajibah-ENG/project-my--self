@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Pencil, Check, X } from 'lucide-react'
+import { ArrowLeft, Pencil, Check, X, Menu } from 'lucide-react'
 import { courseService } from '@/services/course.service'
 import { moduleService, type CreateModuleData } from '@/services/module.service'
 import { lessonService, type CreateLessonData } from '@/services/lesson.service'
@@ -31,6 +31,9 @@ export default function CourseBuilder() {
   const [editedTitle, setEditedTitle] = useState('')
   const [isSavingTitle, setIsSavingTitle] = useState(false)
   const [isSavingLesson, setIsSavingLesson] = useState(false)
+
+  // Mobile sidebar state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   // Fetch course data
   const fetchCourseData = useCallback(async () => {
@@ -392,14 +395,23 @@ export default function CourseBuilder() {
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-50">
         <div className="flex items-center justify-between px-4 h-16">
-          {/* Left: Back button and title */}
+          {/* Left: Mobile menu button, Back button and title */}
           <div className="flex items-center gap-4">
+            {/* Mobile menu toggle */}
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="lg:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+              aria-label="Toggle sidebar"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+
             <Link
               to="/instructor/dashboard"
               className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="h-5 w-5" />
-              <span className="text-sm">Back</span>
+              <span className="text-sm hidden sm:inline">Back</span>
             </Link>
 
             <div className="h-6 w-px bg-gray-200" />
@@ -462,14 +474,20 @@ export default function CourseBuilder() {
       </header>
 
       {/* Main content: Two-panel layout */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Left panel: Module tree */}
         <ModulePanel
           modules={modules}
           selectedModuleId={selectedModule?.id || null}
           selectedLessonId={selectedLesson?.id || null}
-          onSelectModule={handleSelectModule}
-          onSelectLesson={handleSelectLesson}
+          onSelectModule={(module) => {
+            handleSelectModule(module)
+            setIsSidebarOpen(false)
+          }}
+          onSelectLesson={(lesson) => {
+            handleSelectLesson(lesson)
+            setIsSidebarOpen(false)
+          }}
           onAddModule={handleAddModule}
           onEditModule={handleEditModule}
           onDeleteModule={handleDeleteModule}
@@ -477,6 +495,8 @@ export default function CourseBuilder() {
           onDeleteLesson={handleDeleteLesson}
           onMoveModule={handleMoveModule}
           onMoveLesson={handleMoveLesson}
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
         />
 
         {/* Right panel: Lesson editor */}

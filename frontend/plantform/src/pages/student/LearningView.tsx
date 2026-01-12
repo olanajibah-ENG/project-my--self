@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CheckCircle, Menu } from 'lucide-react'
 import { useCourse } from '@/hooks/useCourses'
 import { useProgress } from '@/hooks/useProgress'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,7 @@ export default function LearningView() {
   const { completedLessons, markComplete, isComplete } = useProgress()
 
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   // Get all lessons in order
   const allLessons = course?.modules?.flatMap(m => m.lessons || []) || []
@@ -75,17 +76,30 @@ export default function LearningView() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <div className="flex">
+      <div className="flex relative">
         {course?.modules && (
           <LessonSidebar
             modules={course.modules}
             currentLessonId={currentLesson?.id || null}
             completedLessons={completedLessons}
-            onLessonSelect={handleLessonSelect}
+            onLessonSelect={(lesson) => {
+              handleLessonSelect(lesson)
+              setIsSidebarOpen(false)
+            }}
+            isOpen={isSidebarOpen}
+            onClose={() => setIsSidebarOpen(false)}
           />
         )}
 
-        <main className="flex-1 p-6 overflow-y-auto h-[calc(100vh-4rem)]">
+        <main className="flex-1 p-4 lg:p-6 overflow-y-auto h-[calc(100vh-4rem)]">
+          {/* Mobile sidebar toggle */}
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="lg:hidden mb-4 flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
+          >
+            <Menu className="h-5 w-5" />
+            <span>Course Content</span>
+          </button>
           {currentLesson ? (
             <div className="max-w-4xl mx-auto">
               {/* Progress indicator */}

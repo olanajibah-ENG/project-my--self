@@ -29,6 +29,8 @@ interface ModulePanelProps {
   onDeleteLesson: (lessonId: number) => void
   onMoveModule: (moduleId: number, direction: 'up' | 'down') => void
   onMoveLesson: (lessonId: number, moduleId: number, direction: 'up' | 'down') => void
+  isOpen?: boolean
+  onClose?: () => void
 }
 
 export default function ModulePanel({
@@ -43,7 +45,9 @@ export default function ModulePanel({
   onAddLesson,
   onDeleteLesson,
   onMoveModule,
-  onMoveLesson
+  onMoveLesson,
+  isOpen = true,
+  onClose
 }: ModulePanelProps) {
   const [expandedModules, setExpandedModules] = useState<number[]>(
     modules.map(m => m.id)
@@ -96,16 +100,40 @@ export default function ModulePanel({
   const sortedModules = [...modules].sort((a, b) => a.order - b.order)
 
   return (
-    <aside className="w-[300px] border-r bg-white flex flex-col h-full">
-      <div className="p-4 border-b">
-        <h2 className="font-semibold text-gray-900">Course Curriculum</h2>
-        <p className="text-xs text-gray-500 mt-1">
-          {modules.length} module{modules.length !== 1 ? 's' : ''} -{' '}
-          {modules.reduce((sum, m) => sum + (m.lessons?.length || 0), 0)} lessons
-        </p>
-      </div>
+    <>
+      {/* Mobile overlay */}
+      {isOpen && onClose && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+      <aside className={cn(
+        "w-[300px] border-r bg-white flex flex-col h-full",
+        "lg:relative lg:translate-x-0 lg:z-auto",
+        "fixed top-16 left-0 z-50 transition-transform duration-300",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="p-4 border-b flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-gray-900">Course Curriculum</h2>
+            <p className="text-xs text-gray-500 mt-1">
+              {modules.length} module{modules.length !== 1 ? 's' : ''} -{' '}
+              {modules.reduce((sum, m) => sum + (m.lessons?.length || 0), 0)} lessons
+            </p>
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-500"
+              aria-label="Close panel"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
+        </div>
 
-      <nav className="flex-1 overflow-y-auto p-2">
+        <nav className="flex-1 overflow-y-auto p-2">
         {sortedModules.length === 0 ? (
           <div className="text-center py-8 px-4">
             <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
@@ -309,19 +337,20 @@ export default function ModulePanel({
             )
           })
         )}
-      </nav>
+        </nav>
 
-      {/* Add Module button */}
-      <div className="p-3 border-t">
-        <Button
-          onClick={onAddModule}
-          variant="outline"
-          className="w-full"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Module
-        </Button>
-      </div>
-    </aside>
+        {/* Add Module button */}
+        <div className="p-3 border-t">
+          <Button
+            onClick={onAddModule}
+            variant="outline"
+            className="w-full"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Module
+          </Button>
+        </div>
+      </aside>
+    </>
   )
 }

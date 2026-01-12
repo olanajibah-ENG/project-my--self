@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, CheckCircle, Circle } from 'lucide-react'
+import { ChevronDown, ChevronRight, CheckCircle, Circle, X } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { Module, Lesson } from '@/types'
@@ -8,13 +8,17 @@ interface LessonSidebarProps {
   currentLessonId: number | null
   completedLessons: number[]
   onLessonSelect: (lesson: Lesson) => void
+  isOpen?: boolean
+  onClose?: () => void
 }
 
 export default function LessonSidebar({
   modules,
   currentLessonId,
   completedLessons,
-  onLessonSelect
+  onLessonSelect,
+  isOpen = true,
+  onClose
 }: LessonSidebarProps) {
   const [expandedModules, setExpandedModules] = useState<number[]>(
     modules.map(m => m.id)
@@ -32,11 +36,33 @@ export default function LessonSidebar({
   const isCurrent = (lessonId: number) => lessonId === currentLessonId
 
   return (
-    <aside className="w-72 border-r bg-white overflow-y-auto h-[calc(100vh-4rem)]">
-      <div className="p-4 border-b">
-        <h2 className="font-semibold text-gray-900">Course Content</h2>
-      </div>
-      <nav className="p-2">
+    <>
+      {/* Mobile overlay */}
+      {isOpen && onClose && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+      <aside className={cn(
+        "w-72 border-r bg-white overflow-y-auto h-[calc(100vh-4rem)]",
+        "lg:relative lg:translate-x-0 lg:z-auto",
+        "fixed top-16 left-0 z-50 transition-transform duration-300",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="p-4 border-b flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900">Course Content</h2>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-500"
+              aria-label="Close sidebar"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+        <nav className="p-2">
         {modules.map((module, idx) => (
           <div key={module.id} className="mb-2">
             <button
@@ -79,7 +105,8 @@ export default function LessonSidebar({
             )}
           </div>
         ))}
-      </nav>
-    </aside>
+        </nav>
+      </aside>
+    </>
   )
 }

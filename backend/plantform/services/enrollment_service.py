@@ -9,7 +9,18 @@ class EnrollmentService:
 
     @staticmethod
     def mark_lesson_completed(student, lesson):
-        enrollment = Enrollment.objects.filter(student=student, course=lesson.module.course).first()
+        enrollment = Enrollment.objects.filter(
+            student=student, course=lesson.module.course
+        ).first()
         if not enrollment:
             raise PermissionDenied("Not enrolled")
         enrollment.completed_lessons.add(lesson)
+
+    @staticmethod
+    def unmark_lesson_completed(student, lesson):
+        enrollment = Enrollment.objects.filter(
+            student=student, course=lesson.module.course
+        ).first()
+        if not enrollment:
+            raise PermissionDenied("Not enrolled")
+        enrollment.completed_lessons.remove(lesson)

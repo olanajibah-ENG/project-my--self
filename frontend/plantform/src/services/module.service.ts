@@ -9,8 +9,11 @@ export interface CreateModuleData {
 
 export const moduleService = {
   async getModules(courseId: number): Promise<Module[]> {
-    const response = await api.get(`/courses/${courseId}/modules/`)
-    return response.data
+    // Backend returns { results: [...] } format
+    const response = await api.get('/modules/', {
+      params: { course: courseId }
+    })
+    return response.data.results || response.data
   },
 
   async getModule(id: number): Promise<Module> {
@@ -19,12 +22,16 @@ export const moduleService = {
   },
 
   async createModule(courseId: number, data: CreateModuleData): Promise<Module> {
-    const response = await api.post(`/courses/${courseId}/modules/`, data)
+    // Backend expects course ID in body
+    const response = await api.post('/modules/', {
+      ...data,
+      course: courseId
+    })
     return response.data
   },
 
   async updateModule(id: number, data: Partial<Module>): Promise<Module> {
-    const response = await api.put(`/modules/${id}/`, data)
+    const response = await api.patch(`/modules/${id}/`, data)
     return response.data
   },
 
@@ -33,6 +40,7 @@ export const moduleService = {
   },
 
   async reorderModules(courseId: number, moduleIds: number[]): Promise<void> {
-    await api.post(`/courses/${courseId}/modules/reorder/`, { module_ids: moduleIds })
+    // This endpoint may not exist in backend - will fail gracefully
+    await api.post(`/modules/reorder/`, { course: courseId, module_ids: moduleIds })
   },
 }

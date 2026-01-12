@@ -43,21 +43,16 @@ export default function CourseBuilder() {
       setIsLoading(true)
       setError(null)
 
-      // Fetch course and modules
-      const [courseData, modulesData] = await Promise.all([
-        courseService.getCourse(id),
-        moduleService.getModules(id)
-      ])
+      // Fetch course - it includes modules with lessons from the backend serializer
+      const courseData = await courseService.getCourse(id)
 
       setCourse(courseData)
 
-      // Fetch lessons for each module
-      const modulesWithLessons = await Promise.all(
-        modulesData.map(async (module) => {
-          const lessons = await lessonService.getLessons(module.id)
-          return { ...module, lessons }
-        })
-      )
+      // Use modules from course response, or empty array if none
+      const modulesWithLessons = (courseData.modules || []).map(module => ({
+        ...module,
+        lessons: module.lessons || []
+      }))
 
       setModules(modulesWithLessons)
     } catch (err) {

@@ -11,7 +11,7 @@ import CourseCard from '@/components/course/CourseCard'
 export default function StudentDashboard() {
   const { user } = useAuth()
   const { enrollments, isLoading } = useMyEnrollments()
-  const { getProgress, completedLessons } = useProgress()
+  const { getProgress } = useProgress()
 
   // Find the most recent enrollment for "Continue Learning"
   const lastEnrollment = enrollments[0]

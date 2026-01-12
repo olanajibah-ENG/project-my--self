@@ -3,6 +3,7 @@ import { useAuth } from '@/context/AuthContext'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import LoginPage from '@/pages/auth/LoginPage'
 import RegisterPage from '@/pages/auth/RegisterPage'
+import LearningView from '@/pages/student/LearningView'
 
 // Placeholder dashboards - will be replaced in Phase 3 & 4
 function StudentDashboard() {
@@ -68,6 +69,14 @@ function App() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/courses/:id/learn"
+        element={
+          <ProtectedRoute>
+            <LearningView />
           </ProtectedRoute>
         }
       />

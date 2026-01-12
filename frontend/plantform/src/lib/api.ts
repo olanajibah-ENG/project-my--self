@@ -36,8 +36,15 @@ api.interceptors.response.use(
           const response = await axios.post(`${API_BASE_URL}/auth/refresh/`, {
             refresh: refreshToken,
           })
-          const { access } = response.data
+          const { access, username, email, role, user_id } = response.data
           localStorage.setItem('access_token', access)
+
+          // Sync user data if returned from refresh
+          if (role && user_id) {
+            const userData = { id: user_id, username, email, role }
+            localStorage.setItem('user', JSON.stringify(userData))
+          }
+
           originalRequest.headers.Authorization = `Bearer ${access}`
           return api(originalRequest)
         } catch (refreshError) {

@@ -16,7 +16,7 @@ type ModuleWithLessons = Module & { lessons?: Lesson[] }
 export default function CourseBuilder() {
   const { courseId } = useParams<{ courseId: string }>()
   const id = courseId ? parseInt(courseId) : null
-  const { user } = useAuth()
+  const { user, isLoading: isAuthLoading } = useAuth()
 
   // Course state
   const [course, setCourse] = useState<Course | null>(null)
@@ -39,7 +39,7 @@ export default function CourseBuilder() {
 
   // Fetch course data
   const fetchCourseData = useCallback(async () => {
-    if (!id) return
+    if (!id || isAuthLoading) return
 
     try {
       setIsLoading(true)
@@ -69,7 +69,7 @@ export default function CourseBuilder() {
     } finally {
       setIsLoading(false)
     }
-  }, [id, user?.id])
+  }, [id, user?.id, isAuthLoading])
 
   useEffect(() => {
     fetchCourseData()
@@ -368,7 +368,7 @@ export default function CourseBuilder() {
   }
 
   // Loading state
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>

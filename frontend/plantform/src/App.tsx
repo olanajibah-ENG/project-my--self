@@ -1,43 +1,40 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import ProtectedRoute from '@/components/ProtectedRoute'
+
+// Auth pages
 import LoginPage from '@/pages/auth/LoginPage'
 import RegisterPage from '@/pages/auth/RegisterPage'
+
+// Student pages
+import StudentDashboard from '@/pages/student/StudentDashboard'
+import CourseCatalog from '@/pages/student/CourseCatalog'
+import CourseDetail from '@/pages/student/CourseDetail'
 import LearningView from '@/pages/student/LearningView'
 
-// Placeholder dashboards - will be replaced in Phase 3 & 4
-function StudentDashboard() {
-  const { user, logout } = useAuth()
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold text-brand-600">Student Dashboard</h1>
-      <p className="mt-2 text-gray-600">Welcome, {user?.username}!</p>
-      <button onClick={logout} className="mt-4 text-red-600 hover:underline">
-        Logout
-      </button>
-    </div>
-  )
-}
+// Instructor pages
+import InstructorDashboard from '@/pages/instructor/InstructorDashboard'
+import CourseBuilder from '@/pages/instructor/CourseBuilder'
+import CreateCourse from '@/pages/instructor/CreateCourse'
 
-function InstructorDashboard() {
-  const { user, logout } = useAuth()
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold text-brand-600">Instructor Dashboard</h1>
-      <p className="mt-2 text-gray-600">Welcome, {user?.username}!</p>
-      <button onClick={logout} className="mt-4 text-red-600 hover:underline">
-        Logout
-      </button>
-    </div>
-  )
-}
-
+// Role-based Dashboard component
 function Dashboard() {
   const { user } = useAuth()
   if (user?.role === 'instructor') {
     return <InstructorDashboard />
   }
   return <StudentDashboard />
+}
+
+// Protected route wrapper for instructor-only routes
+function InstructorRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth()
+
+  if (user?.role !== 'instructor') {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return <>{children}</>
 }
 
 function App() {
@@ -63,7 +60,7 @@ function App() {
         element={user ? <Navigate to="/dashboard" replace /> : <RegisterPage />}
       />
 
-      {/* Protected routes */}
+      {/* Protected student routes */}
       <Route
         path="/dashboard"
         element={
@@ -73,10 +70,58 @@ function App() {
         }
       />
       <Route
+        path="/courses"
+        element={
+          <ProtectedRoute>
+            <CourseCatalog />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/courses/:id"
+        element={
+          <ProtectedRoute>
+            <CourseDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/courses/:id/learn"
         element={
           <ProtectedRoute>
             <LearningView />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Protected instructor routes */}
+      <Route
+        path="/instructor/dashboard"
+        element={
+          <ProtectedRoute>
+            <InstructorRoute>
+              <InstructorDashboard />
+            </InstructorRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/instructor/courses/new"
+        element={
+          <ProtectedRoute>
+            <InstructorRoute>
+              <CreateCourse />
+            </InstructorRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/instructor/courses/:id/edit"
+        element={
+          <ProtectedRoute>
+            <InstructorRoute>
+              <CourseBuilder />
+            </InstructorRoute>
           </ProtectedRoute>
         }
       />

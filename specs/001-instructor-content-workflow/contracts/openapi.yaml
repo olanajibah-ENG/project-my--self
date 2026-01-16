@@ -1,0 +1,622 @@
+openapi: 3.0.3
+info:
+  title: Instructor Content Management API
+  description: API endpoints for instructor course, module, and lesson management
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8001/api
+    description: Development server
+
+paths:
+  /courses/:
+    get:
+      summary: List instructor's courses
+      operationId: listCourses
+      tags: [Courses]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of courses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Course'
+    post:
+      summary: Create a new course
+      operationId: createCourse
+      tags: [Courses]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseCreate'
+      responses:
+        '201':
+          description: Course created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /courses/{id}/:
+    get:
+      summary: Get course details
+      operationId: getCourse
+      tags: [Courses]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+      responses:
+        '200':
+          description: Course details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseDetail'
+        '404':
+          description: Course not found
+    put:
+      summary: Update course
+      operationId: updateCourse
+      tags: [Courses]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseCreate'
+      responses:
+        '200':
+          description: Course updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '400':
+          description: Validation error
+        '403':
+          description: Not course owner
+        '404':
+          description: Course not found
+    delete:
+      summary: Delete course
+      operationId: deleteCourse
+      tags: [Courses]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CourseId'
+      responses:
+        '204':
+          description: Course deleted
+        '403':
+          description: Not course owner
+        '404':
+          description: Course not found
+
+  /modules/:
+    get:
+      summary: List modules (optionally filter by course)
+      operationId: listModules
+      tags: [Modules]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: course
+          in: query
+          schema:
+            type: integer
+          description: Filter by course ID
+      responses:
+        '200':
+          description: List of modules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Module'
+    post:
+      summary: Create a new module
+      operationId: createModule
+      tags: [Modules]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModuleCreate'
+      responses:
+        '201':
+          description: Module created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Module'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /modules/{id}/:
+    get:
+      summary: Get module details
+      operationId: getModule
+      tags: [Modules]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ModuleId'
+      responses:
+        '200':
+          description: Module details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModuleDetail'
+        '404':
+          description: Module not found
+    put:
+      summary: Update module
+      operationId: updateModule
+      tags: [Modules]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ModuleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModuleCreate'
+      responses:
+        '200':
+          description: Module updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Module'
+        '400':
+          description: Validation error
+        '403':
+          description: Not course owner
+        '404':
+          description: Module not found
+    delete:
+      summary: Delete module (cascades to lessons)
+      operationId: deleteModule
+      tags: [Modules]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ModuleId'
+      responses:
+        '204':
+          description: Module and all lessons deleted
+        '403':
+          description: Not course owner
+        '404':
+          description: Module not found
+
+  /modules/reorder/:
+    post:
+      summary: Reorder modules within a course
+      operationId: reorderModules
+      tags: [Modules]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderRequest'
+      responses:
+        '200':
+          description: Modules reordered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: reordered
+
+  /lessons/:
+    get:
+      summary: List lessons (optionally filter by module)
+      operationId: listLessons
+      tags: [Lessons]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: module
+          in: query
+          schema:
+            type: integer
+          description: Filter by module ID
+      responses:
+        '200':
+          description: List of lessons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Lesson'
+    post:
+      summary: Create a new lesson
+      operationId: createLesson
+      tags: [Lessons]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LessonCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LessonCreateWithFile'
+      responses:
+        '201':
+          description: Lesson created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lesson'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '415':
+          description: Unsupported media type (FIXED - now accepts application/json)
+
+  /lessons/{id}/:
+    get:
+      summary: Get lesson details
+      operationId: getLesson
+      tags: [Lessons]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      responses:
+        '200':
+          description: Lesson details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lesson'
+        '404':
+          description: Lesson not found
+    put:
+      summary: Update lesson
+      operationId: updateLesson
+      tags: [Lessons]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LessonCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LessonCreateWithFile'
+      responses:
+        '200':
+          description: Lesson updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lesson'
+        '400':
+          description: Validation error
+        '403':
+          description: Not course owner
+        '404':
+          description: Lesson not found
+    delete:
+      summary: Delete lesson
+      operationId: deleteLesson
+      tags: [Lessons]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      responses:
+        '204':
+          description: Lesson deleted
+        '403':
+          description: Not course owner
+        '404':
+          description: Lesson not found
+
+  /lessons/reorder/:
+    post:
+      summary: Reorder lessons within a module
+      operationId: reorderLessons
+      tags: [Lessons]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReorderRequest'
+      responses:
+        '200':
+          description: Lessons reordered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: reordered
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    CourseId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Course ID
+    ModuleId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Module ID
+    LessonId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: Lesson ID
+
+  schemas:
+    Course:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        instructor:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - title
+
+    CourseCreate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+      required:
+        - title
+
+    CourseDetail:
+      allOf:
+        - $ref: '#/components/schemas/Course'
+        - type: object
+          properties:
+            modules:
+              type: array
+              items:
+                $ref: '#/components/schemas/ModuleDetail'
+
+    Module:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        order:
+          type: integer
+          minimum: 0
+        course:
+          type: integer
+      required:
+        - title
+        - course
+
+    ModuleCreate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        course:
+          type: integer
+        order:
+          type: integer
+          minimum: 0
+      required:
+        - title
+        - course
+
+    ModuleDetail:
+      allOf:
+        - $ref: '#/components/schemas/Module'
+        - type: object
+          properties:
+            lessons:
+              type: array
+              items:
+                $ref: '#/components/schemas/Lesson'
+            lesson_count:
+              type: integer
+              description: Number of lessons in this module
+
+    Lesson:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          maxLength: 200
+        content_markdown:
+          type: string
+          maxLength: 50000
+        video_file:
+          type: string
+          format: uri
+          nullable: true
+        order:
+          type: integer
+          minimum: 0
+        module:
+          type: integer
+      required:
+        - title
+        - module
+
+    LessonCreate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        content_markdown:
+          type: string
+          maxLength: 50000
+        module:
+          type: integer
+        order:
+          type: integer
+          minimum: 0
+      required:
+        - title
+        - module
+
+    LessonCreateWithFile:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        content_markdown:
+          type: string
+          maxLength: 50000
+        video_file:
+          type: string
+          format: binary
+          description: Video file (max 10MB, formats mp4/webm/mov)
+        module:
+          type: integer
+        order:
+          type: integer
+          minimum: 0
+      required:
+        - title
+        - module
+
+    ReorderRequest:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              order:
+                type: integer
+                minimum: 0
+            required:
+              - id
+              - order
+      required:
+        - orders
+
+    ValidationError:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
+      example:
+        title:
+          - "This field is required."
+          - "Ensure this field has no more than 200 characters."
+        content_markdown:
+          - "Ensure this field has no more than 50000 characters."
+        video_file:
+          - "Video file must be less than 10MB"
+
+security:
+  - bearerAuth: []

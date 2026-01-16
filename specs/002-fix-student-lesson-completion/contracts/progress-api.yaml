@@ -1,0 +1,288 @@
+openapi: 3.0.3
+info:
+  title: Student Lesson Completion API
+  description: |
+    API contract for student lesson completion tracking endpoints.
+    This document describes the existing backend API that the frontend bug fix must correctly consume.
+
+    **Context**: This API contract documents the EXISTING backend behavior.
+    The bug fix is frontend-only - no backend changes required.
+
+  version: 1.0.0
+  contact:
+    name: OlaProject Development Team
+
+servers:
+  - url: http://localhost:8001/api
+    description: Development server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /progress/completed-lessons/:
+    get:
+      summary: Get all completed lessons for authenticated student
+      description: |
+        Returns all lessons that the authenticated student has marked as complete
+        across all enrolled courses. Response includes full lesson objects, not just IDs.
+
+        **Frontend Bug**: The frontend was looking for `response.data.completed_lessons`
+        but the backend returns `response.data.results`. Fix is to parse `results` array.
+
+      operationId: getCompletedLessons
+      tags:
+        - Progress
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved completed lessons
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompletedLessonsResponse'
+              example:
+                message: "Completed lessons retrieved successfully"
+                count: 3
+                results:
+                  - id: 1
+                    title: "Introduction to Python"
+                    content_markdown: "# Welcome\nThis is markdown content..."
+                    video_file: "/media/lesson_videos/intro.mp4"
+                    order: 1
+                    module: 5
+                  - id: 2
+                    title: "Variables and Data Types"
+                    content_markdown: "## Variables\nPython variables..."
+                    video_file: "/media/lesson_videos/variables.mp4"
+                    order: 2
+                    module: 5
+                  - id: 7
+                    title: "Functions"
+                    content_markdown: "## Functions\nDefining functions..."
+                    video_file: null
+                    order: 1
+                    module: 12
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /lessons/{id}/complete/:
+    post:
+      summary: Mark a lesson as completed
+      description: |
+        Marks a specific lesson as completed for the authenticated student.
+        Student must be enrolled in the course that contains this lesson.
+
+        Backend performs:
+        1. Verify student is enrolled in the lesson's course
+        2. Add lesson to enrollment.completed_lessons (ManyToMany)
+        3. Return success message
+
+        **Frontend should**:
+        - Optimistically update UI (add lesson ID to completedLessons array)
+        - Call this endpoint
+        - On error: revert optimistic update and show error message
+
+      operationId: markLessonComplete
+      tags:
+        - Lessons
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the lesson to mark as complete
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Lesson marked as completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+              example:
+                message: "Lesson marked as completed"
+        '403':
+          description: Student is not enrolled in the course containing this lesson
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Not enrolled"
+        '404':
+          description: Lesson not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Not found."
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    delete:
+      summary: Unmark a lesson as completed (mark as incomplete)
+      description: |
+        Removes the completion status for a specific lesson for the authenticated student.
+        Student must be enrolled in the course that contains this lesson.
+
+        Backend performs:
+        1. Verify student is enrolled in the lesson's course
+        2. Remove lesson from enrollment.completed_lessons (ManyToMany)
+        3. Return success message
+
+        **Frontend should**:
+        - Optimistically update UI (remove lesson ID from completedLessons array)
+        - Call this endpoint
+        - On error: revert optimistic update and show error message
+
+      operationId: markLessonIncomplete
+      tags:
+        - Lessons
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the lesson to mark as incomplete
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Lesson marked as incomplete successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+              example:
+                message: "Lesson marked as incomplete"
+        '403':
+          description: Student is not enrolled in the course containing this lesson
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Not enrolled"
+        '404':
+          description: Lesson not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                detail: "Not found."
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /api/token/ endpoint
+
+  schemas:
+    CompletedLessonsResponse:
+      type: object
+      required:
+        - message
+        - count
+        - results
+      properties:
+        message:
+          type: string
+          description: Success message
+          example: "Completed lessons retrieved successfully"
+        count:
+          type: integer
+          description: Number of completed lessons
+          example: 3
+        results:
+          type: array
+          description: Array of completed lesson objects (NOT just IDs)
+          items:
+            $ref: '#/components/schemas/Lesson'
+
+    Lesson:
+      type: object
+      required:
+        - id
+        - title
+        - content_markdown
+        - order
+        - module
+      properties:
+        id:
+          type: integer
+          description: Unique lesson identifier
+          example: 1
+        title:
+          type: string
+          description: Lesson title
+          example: "Introduction to Python"
+        content_markdown:
+          type: string
+          description: Lesson content in Markdown format
+          example: "# Welcome\nThis is **Markdown** content..."
+        video_file:
+          type: string
+          nullable: true
+          description: URL path to lesson video file (null if no video)
+          example: "/media/lesson_videos/intro.mp4"
+        order:
+          type: integer
+          description: Display order within the module
+          example: 1
+        module:
+          type: integer
+          description: ID of the module this lesson belongs to
+          example: 5
+
+    SuccessMessage:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Success message
+          example: "Lesson marked as completed"
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Error message
+          example: "Not enrolled"
+
+  responses:
+    UnauthorizedError:
+      description: Authentication credentials were not provided or are invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            detail: "Authentication credentials were not provided."
+
+tags:
+  - name: Progress
+    description: Student progress tracking endpoints
+  - name: Lessons
+    description: Lesson completion management
+
+externalDocs:
+  description: Feature Specification
+  url: ../spec.md

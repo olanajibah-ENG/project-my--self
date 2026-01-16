@@ -4,6 +4,6 @@ User = settings.AUTH_USER_MODEL
 
 class Course(models.Model):
     title = models.CharField(max_length=255)
-    description = models.TextField()
+    description = models.TextField(blank=True, default='')
     instructor = models.ForeignKey(User, related_name="courses", on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)

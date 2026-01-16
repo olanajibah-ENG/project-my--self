@@ -7,6 +7,8 @@ from django.db.models import Count, Sum
 
 
 class LessonSerializer(serializers.ModelSerializer):
+    content_markdown = serializers.CharField(required=False, allow_blank=True)
+    
     class Meta:
         model = Lesson
         fields = ("id", "title", "content_markdown", "video_file", "order", "module")
@@ -45,6 +47,7 @@ class CourseSerializer(serializers.ModelSerializer):
             "is_enrolled",
             "is_owner",
         )
+        read_only_fields = ("instructor", "created_at")
 
     def get_instructor_name(self, obj):
         return obj.instructor.username

@@ -39,11 +39,18 @@
     font-size: 1.1rem;
 }
 
-.user-bubble {
+.my-bubble {
     align-self: flex-end;
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
     color: white;
     border-bottom-right-radius: 2px;
+}
+
+.user-bubble {
+    align-self: flex-start;
+    background: #e5e7eb;
+    color: #1f2937;
+    border-bottom-left-radius: 2px;
 }
 
 .ai-bubble {
@@ -52,7 +59,7 @@
     color: #1e3a8a;
     border: 1px solid #dbeafe;
     border-bottom-left-radius: 2px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .chat-input-area {
@@ -98,7 +105,9 @@
     font-size: 1.05rem;
 }
 
-.chat-input:focus { border-color: #3b82f6; }
+.chat-input:focus {
+    border-color: #3b82f6;
+}
 
 .send-btn {
     background: #1e3a8a;
@@ -112,4 +121,53 @@
     font-weight: 500;
 }
 
-.send-btn:hover { background: #1d4ed8; }
+.send-btn:hover {
+    background: #1d4ed8;
+}
+
+.send-btn:disabled,
+.chat-input:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Typing Indicator */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 16px;
+    width: fit-content;
+}
+
+.typing-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #3b82f6;
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.typing-dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes typing {
+
+    0%,
+    80%,
+    100% {
+        transform: scale(0);
+        opacity: 0.6;
+    }
+
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}

@@ -29,7 +29,7 @@ class OpenRouterService:
 
         try:
             print(f"Sending request to OpenRouter with model: {self.model}")
-            response = requests.post(self.url, headers=headers, data=json.dumps(payload))
+            response = requests.post(self.url, headers=headers, data=json.dumps(payload), timeout=60)
             print(f"Response status: {response.status_code}")
             print(f"Response body: {response.text}")
             response.raise_for_status()

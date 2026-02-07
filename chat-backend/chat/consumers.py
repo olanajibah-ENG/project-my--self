@@ -1,5 +1,6 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+from asgiref.sync import sync_to_async
 from .services import OpenRouterService
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -29,23 +30,67 @@ class ChatConsumer(AsyncWebsocketConsumer):
         )
 
         # 2. إذا كانت موجهة للـ AI
+        # 2. إذا كانت موجهة للـ AI
         if chat_type == 'user_to_ai':
-            ai_service = OpenRouterService()
-            ai_reply = ai_service.get_ai_response(user_message)
-
+            # إرسال إشعار بأن الـ AI يكتب (مباشرة للمستخدم الحالي لضمان السرعة)
+            await self.send(text_data=json.dumps({
+                'type': 'typing',
+                'sender': 'Gemini AI',
+                'active': True
+            }))
+            
+            # (اختياري) بث للآخرين أيضاً
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
-                    'type': 'broadcast_message',
-                    'message': ai_reply,
+                    'type': 'broadcast_typing',
                     'sender': 'Gemini AI',
-                    'msg_type': 'ai_msg'
+                    'active': True
                 }
             )
+
+            try:
+                ai_service = OpenRouterService()
+                ai_reply = await sync_to_async(ai_service.get_ai_response)(user_message)
+
+                # إرسال رد الـ AI
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'broadcast_message',
+                        'message': ai_reply,
+                        'sender': 'Gemini AI',
+                        'msg_type': 'ai_msg'
+                    }
+                )
+            finally:
+                # إخفاء مؤشر الكتابة (مباشرة للمستخدم الحالي)
+                await self.send(text_data=json.dumps({
+                    'type': 'typing',
+                    'sender': 'Gemini AI',
+                    'active': False
+                }))
+                
+                # بث إخفاء المؤشر للآخرين
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'broadcast_typing',
+                        'sender': 'Gemini AI',
+                        'active': False
+                    }
+                )
 
     async def broadcast_message(self, event):
         await self.send(text_data=json.dumps({
             'message': event['message'],
             'sender': event['sender'],
             'msg_type': event['msg_type']
+        }))
+
+    async def broadcast_typing(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'typing',
+            'sender': event['sender'],
+            'active': event['active']
         }))

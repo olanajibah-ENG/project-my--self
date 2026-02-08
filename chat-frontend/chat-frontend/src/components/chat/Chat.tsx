@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown'; // مكتبة المعالجة
 import './Chat.css';
 import type { Message, ChatType, ChatPayload } from '../../types/chat';
 import { connectToChat } from '../../services/chatService';
@@ -11,39 +12,29 @@ const Chat: React.FC = () => {
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
     const [isAiTyping, setIsAiTyping] = useState(false);
 
-    // Use a ref for the socket controller (which now has send() and close())
     const socketControllerRef = useRef<{ send: (data: any) => void; close: () => void } | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const controller = connectToChat(
             (data: any) => {
-                console.log("Received WebSocket data:", data); // DEBUG
                 if (data.type === 'typing') {
-                    console.log("Typing event received from:", data.sender, "Active:", data.active); // DEBUG
                     if (data.sender !== senderName) {
                         setIsAiTyping(data.active);
                     }
                 } else {
-                    // It's a message
                     const msg = data as Message;
-                    // Ignore our own messages (we added them optimistically)
                     if (msg.sender !== senderName) {
                         setMessages(prev => [...prev, msg]);
-                        // If we receive a message from AI, stop typing
                         if (msg.sender === 'Gemini AI') {
                             setIsAiTyping(false);
                         }
                     }
                 }
             },
-            (status) => {
-                setConnectionStatus(status);
-            }
+            (status) => setConnectionStatus(status)
         );
-
         socketControllerRef.current = controller;
-
         return () => controller.close();
     }, [senderName]);
 
@@ -51,31 +42,32 @@ const Chat: React.FC = () => {
         scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight);
     }, [messages, isAiTyping]);
 
-    const handleSend = () => {
-        if (!inputValue.trim() || !socketControllerRef.current) return;
+    // دالة الإرسال العامة (تستخدم للرسائل اليدوية والمقترحة)
+    const handleSend = (text?: string) => {
+        const messageToSend = text || inputValue;
+        if (!messageToSend.trim() || !socketControllerRef.current) return;
 
         const payload: ChatPayload = {
-            message: inputValue,
+            message: messageToSend,
             type: chatMode,
             sender: senderName
         };
 
-        // Optimistic update
         const optimisticMsg: Message = {
-            message: inputValue,
+            message: messageToSend,
             sender: senderName,
             msg_type: 'user_msg'
         };
-        setMessages(prev => [...prev, optimisticMsg]);
 
+        setMessages(prev => [...prev, optimisticMsg]);
         socketControllerRef.current.send(payload);
-        setInputValue('');
+        if (!text) setInputValue(''); // مسح الحقل فقط إذا كان إرسالاً يدوياً
     };
 
     return (
         <div className="chat-wrapper">
             <div className="chat-header">
-                {chatMode === 'user_to_ai' ? 'AI Chat Room' : 'Chat with Users'}
+                {chatMode === 'user_to_ai' ? 'AI Intelligence Lab' : 'Public Chat'}
                 <div style={{ fontSize: '0.8rem', fontWeight: 'normal', marginTop: '5px', opacity: 0.8 }}>
                     Status: {connectionStatus}
                 </div>
@@ -84,10 +76,31 @@ const Chat: React.FC = () => {
             <div className="messages-list" ref={scrollRef}>
                 {messages.map((msg, index) => (
                     <div key={index} className={`message-bubble ${msg.msg_type === 'ai_msg' ? 'ai-bubble' : (msg.sender === senderName ? 'my-bubble' : 'user-bubble')}`}>
-                        <small style={{ display: 'block', fontSize: '10px', opacity: 0.7 }}>
+                        <small style={{ display: 'block', fontSize: '10px', opacity: 0.7, marginBottom: '4px' }}>
                             {msg.msg_type === 'ai_msg' ? 'Gemini AI' : (msg.sender === senderName ? 'Me' : msg.sender)}
                         </small>
-                        {msg.message}
+                        
+                        {/* عرض الرسالة كـ Markdown للـ AI ونص عادي للمستخدمين */}
+                        {msg.msg_type === 'ai_msg' ? (
+                            <ReactMarkdown>{msg.message}</ReactMarkdown>
+                        ) : (
+                            msg.message
+                        )}
+
+                        {/* عرض الأسئلة المقترحة إن وجدت */}
+                        {msg.msg_type === 'ai_msg' && msg.suggested_questions && msg.suggested_questions.length > 0 && (
+                            <div className="suggestions-container">
+                                {msg.suggested_questions.map((q, i) => (
+                                    <button 
+                                        key={i} 
+                                        className="suggestion-btn"
+                                        onClick={() => handleSend(q)}
+                                    >
+                                        {q}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 ))}
 
@@ -102,18 +115,8 @@ const Chat: React.FC = () => {
 
             <div className="chat-input-area">
                 <div className="controls">
-                    <button
-                        className={`mode-selector ${chatMode === 'user_to_user' ? 'active' : ''}`}
-                        onClick={() => setChatMode('user_to_user')}
-                    >
-                        Chat with Users
-                    </button>
-                    <button
-                        className={`mode-selector ${chatMode === 'user_to_ai' ? 'active' : ''}`}
-                        onClick={() => setChatMode('user_to_ai')}
-                    >
-                        Ask AI
-                    </button>
+                    <button className={`mode-selector ${chatMode === 'user_to_user' ? 'active' : ''}`} onClick={() => setChatMode('user_to_user')}>Community</button>
+                    <button className={`mode-selector ${chatMode === 'user_to_ai' ? 'active' : ''}`} onClick={() => setChatMode('user_to_ai')}>Ask AI</button>
                 </div>
 
                 <div className="input-group">
@@ -122,16 +125,10 @@ const Chat: React.FC = () => {
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                        placeholder={chatMode === 'user_to_ai' ? "Ask AI something..." : "Type a message..."}
+                        placeholder={chatMode === 'user_to_ai' ? "Ask me anything..." : "Write a message..."}
                         disabled={connectionStatus !== 'connected'}
                     />
-                    <button
-                        className="send-btn"
-                        onClick={handleSend}
-                        disabled={connectionStatus !== 'connected'}
-                    >
-                        Send
-                    </button>
+                    <button className="send-btn" onClick={() => handleSend()} disabled={connectionStatus !== 'connected'}>Send</button>
                 </div>
             </div>
         </div>

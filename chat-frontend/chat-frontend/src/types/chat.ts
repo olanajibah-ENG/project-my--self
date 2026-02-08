@@ -2,6 +2,8 @@ export interface Message {
     message: string;
     sender: string;
     msg_type: 'user_msg' | 'ai_msg';
+    // إضافة الحقل الجديد ليكون اختيارياً (فقط لرسائل الـ AI)
+    suggested_questions?: string[]; 
 }
 
 export interface TypingEvent {

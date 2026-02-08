@@ -4,3 +4,6 @@ requests
 python-dotenv
 djangorestframework
 django-cors-headers
+langchain-openai
+langchain-core
+pydantic

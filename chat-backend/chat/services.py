@@ -1,41 +1,90 @@
-import requests
-import json
 import os
+import json
+import re
 from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import HumanMessage, AIMessage
 
 load_dotenv()
 
-class OpenRouterService:
+class LangChainService:
+    # قاموس لتخزين تاريخ المحادثة لكل مستخدم (Memory)
+    _sessions_history = {}
+
     def __init__(self):
-        self.api_key = os.getenv("OPENROUTER_API_KEY")
-        self.model = os.getenv("AI_MODEL", "meta-llama/llama-3.2-3b-instruct:free")
-        self.url = "https://openrouter.ai/api/v1/chat/completions"
-
-    def get_ai_response(self, message):
-        if not self.api_key:
-            return "Error: API Key not found in .env"
-
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "http://localhost:8000",
-            "X-Title": "Django Chat App"
-        }
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        model_name = os.getenv("AI_MODEL", "google/gemini-2.0-flash-exp:free")
         
-        payload = {
-            "model": self.model,
-            "messages": [{"role": "user", "content": message}]
-        }
+        # إعداد اتصال LangChain مع OpenRouter
+        self.llm = ChatOpenAI(
+            model=model_name,
+            openai_api_key=api_key,
+            openai_api_base="https://openrouter.ai/api/v1",
+            temperature=0.7
+        )
 
+    def get_ai_response(self, user_id, message):
         try:
-            print(f"Sending request to OpenRouter with model: {self.model}")
-            response = requests.post(self.url, headers=headers, data=json.dumps(payload), timeout=60)
-            print(f"Response status: {response.status_code}")
-            print(f"Response body: {response.text}")
-            response.raise_for_status()
-            data = response.json()
-            return data['choices'][0]['message']['content']
-        except requests.exceptions.HTTPError as e:
-            return f"Error: {str(e)} - Response: {response.text}"
+            # إدارة ذاكرة المحادثة
+            if user_id not in self._sessions_history:
+                self._sessions_history[user_id] = []
+            
+            history = self._sessions_history[user_id]
+
+            # إعداد الـ Prompt مع طلب JSON
+            prompt = ChatPromptTemplate.from_messages([
+                ("system", """أنت مساعد ذكي تجيب باللغة العربية وتستخدم Markdown لتنسيق النصوص.
+
+يجب أن يكون ردك بصيغة JSON فقط بهذا الشكل:
+{{
+  "answer": "الرد النصي بتنسيق Markdown",
+  "suggested_questions": ["سؤال 1", "سؤال 2", "سؤال 3"]
+}}
+
+لا تكتب أي شيء قبل أو بعد الـ JSON."""),
+                MessagesPlaceholder(variable_name="chat_history"),
+                ("user", "{input}")
+            ])
+
+            # تشغيل الـ Chain
+            chain = prompt | self.llm
+            
+            # استدعاء النموذج
+            result = chain.invoke({
+                "input": message,
+                "chat_history": history
+            })
+
+            # استخراج النص من الرد
+            response_text = result.content
+            
+            # محاولة استخراج JSON من الرد
+            try:
+                # البحث عن JSON في النص (قد يكون محاط بـ ```json```)
+                json_match = re.search(r'```json\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+                if json_match:
+                    response_text = json_match.group(1)
+                
+                # تحويل النص إلى JSON
+                parsed_response = json.loads(response_text)
+                answer = parsed_response.get("answer", response_text)
+                suggested_questions = parsed_response.get("suggested_questions", [])
+            except:
+                # إذا فشل التحليل، نستخدم الرد كما هو
+                answer = response_text
+                suggested_questions = []
+
+            # تحديث الذاكرة بالرسائل الجديدة
+            history.append(HumanMessage(content=message))
+            history.append(AIMessage(content=answer))
+            
+            # تقليص الذاكرة لآخر 10 رسائل فقط
+            self._sessions_history[user_id] = history[-10:]
+
+            return {
+                "answer": answer,
+                "suggested_questions": suggested_questions
+            }
         except Exception as e:
-            return f"Error: {str(e)}"
+            return {"answer": f"Error: {str(e)}", "suggested_questions": []}
